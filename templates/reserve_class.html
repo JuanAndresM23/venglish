@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reserve a Class</title>
+</head>
+<body>
+
+<h1>Reserve a Class</h1>
+
+
+
+<form method="POST" action="{{ url_for('reserve_class') }}">
+    <label>Name:</label><br>
+    <input type="text" name="name" required><br><br>
+
+    <label>Phone:</label><br>
+    <input type="text" name="phone" required><br><br>
+
+    <label>Email:</label><br>
+    <input type="email" name="email"><br><br>
+
+    <label>Course:</label><br>
+    <select name="course_id" required>
+        {% for course in courses %}
+            <option value="{{ course[0] }}">{{ course[1] }}</option>
+        {% endfor %}
+    </select><br><br>
+
+    <label>Date:</label><br>
+    <input type="date" name="class_date" required><br><br>
+
+    <label>Time:</label><br>
+    <input type="time" name="class_time" required><br><br>
+
+    <button type="submit">Reserve Class</button>
+</form>
+
+<br>
+<a href="{{ url_for('home') }}">Back to Home</a>
+
+</body>
+</html>
