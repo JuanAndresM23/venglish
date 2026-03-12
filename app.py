@@ -3,14 +3,48 @@ from database import get_connection
 from flask import request, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import session
-
+from flask import Flask, render_template, request, redirect, session
+from functools import wraps
+from flask import session, redirect, url_for
 
 app = Flask(__name__)
-app.secret_key = "una_clave_muy_segura_aqui"
+app.secret_key = "Parkour2311"
 conn = get_connection()
+from datetime import timedelta
+
+# 1. Definir cuánto tiempo dura la sesión (10 minutos)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=0.10)
+
+# 2. Asegurarse de que la sesión sea "permanente" (para que use el tiempo anterior)
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Verificamos si la clave "admin" existe en la sesión
+        if not session.get("admin"):
+            return redirect(url_for("admin_login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route("/logout")
+def logout():
+    # Elimina todos los datos de la sesión actual
+    session.clear() 
+    # Redirige al login para que el usuario sepa que salió
+    return redirect(url_for("admin_login"))
+
 
 @app.route("/")
-def home():
+def index():
+ return render_template('index.html')
+
+@app.route("/list_student")
+def list_student():
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -20,12 +54,18 @@ def home():
     cursor.close()
     conn.close()
 
-    return render_template("index.html", students=students)
+    return render_template("list_student.html", students=students)
 
 
 #inserta los estudiantes
 @app.route("/add_student", methods=["GET", "POST"])
+@admin_required
+
 def add_student():
+    if "admin" not in session:
+        return redirect("/admin_login")
+   
+
     if request.method == "POST":
         name = request.form["name"]
         phone = request.form["phone"]
@@ -41,7 +81,7 @@ def add_student():
         cursor.close()
         conn.close()
 
-        return redirect(url_for("home"))
+        return redirect(url_for("index"))
 
     return render_template("add_student.html")
 
@@ -83,6 +123,7 @@ def student_register():
 @app.route("/student_login", methods=["GET", "POST"])
 def student_login():
 
+
     if request.method == "POST":
 
         student_code = request.form["student_code"]
@@ -113,6 +154,9 @@ def student_login():
 #reserva estudiantes 
 @app.route("/reserve_class", methods=["GET", "POST"])
 def reserve_class():
+
+    if "student_id" not in session:
+        return redirect("/student_login")
 
     # Verificar que el estudiante haya iniciado sesión
     student_id = session.get("student_id")
@@ -228,10 +272,11 @@ bookings.id,
 @app.route("/student_dashboard")
 def student_dashboard():
 
-    student_id = session.get("student_id")
 
-    if not student_id:
-        return redirect(url_for("student_login"))
+    if "student_id" not in session:
+        return redirect("/student_login")
+
+    student_id = session["student_id"]
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -252,6 +297,8 @@ def student_dashboard():
 
     cursor.close()
     conn.close()
+
+
 
     return render_template("student_dashboard.html", classes=classes)
 
@@ -299,35 +346,56 @@ def delete_booking(booking_id):
 
     return "deleted"
 
-
 @app.route("/admin_login", methods=["GET","POST"])
 def admin_login():
-
     if request.method == "POST":
-
         username = request.form["username"]
         password = request.form["password"]
 
         cur = conn.cursor()
-
-        cur.execute("""
-        SELECT * FROM admins
-        WHERE username=%s AND password=%s
-        """,(username,password))
-
+        cur.execute("SELECT * FROM admins WHERE username=%s AND password=%s", (username, password))
         admin = cur.fetchone()
 
         if admin:
-
             session["admin"] = True
-
-            return redirect("/dashboard")
+            
+            # 1. Buscamos si existe un destino previo en la URL
+            next_page = request.args.get('next')
+            
+            # 2. Si existe, vamos allá. Si no, vamos al dashboard.
+            # (El or "/dashboard" es tu salvavidas por defecto)
+            return redirect(next_page or url_for("dashboard"))
 
         else:
-
             return "Invalid admin login"
 
     return render_template("admin_login.html")
+
+
+@app.before_request
+def check_session():
+    # 1. Definimos qué rutas son exclusivas para el ADMIN
+    admin_only_routes = ["dashboard", "list_student", "add_student"]
+
+    # 2. Definimos qué rutas son públicas (No requieren login)
+    open_routes = ["admin_login", "student_login", "student_register", "static", "index"]
+
+    # Si no hay un endpoint válido (ej. error 404), no hacemos nada
+    if not request.endpoint:
+        return
+
+    # 3. LÓGICA DE PROTECCIÓN
+    # Si la ruta que intenta visitar está en la lista de ADMIN...
+    if request.endpoint in admin_only_routes:
+        if "admin" not in session:
+            # Si no es admin, lo mandamos a SU login
+            return redirect(url_for("admin_login", next=request.full_path))
+
+    # 4. Si la ruta NO es pública y NO es de admin (es decir, es de estudiante)...
+    elif request.endpoint not in open_routes:
+        if "student_id" not in session:
+            # Si no hay sesión de estudiante, al login de estudiantes
+            return redirect(url_for("student_login"))
 
 if __name__ == "__main__":
     app.run(debug=True)
