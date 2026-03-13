@@ -1,0 +1,9 @@
+.navbar{
+    background-color: rgb(154, 155, 124);
+}
+
+
+.carousel-item img {
+    height: 700px; /* Tú decides la altura */
+    object-fit: cover; /* Mantiene la proporción sin deformar */
+  }
