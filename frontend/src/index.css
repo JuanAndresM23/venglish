@@ -1,111 +1,245 @@
+/* ==========================================================================
+   1. VARIABLES Y CONFIGURACIÓN (Root & Base)
+   ========================================================================== */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+  --venglish-pink: #ff4bb0;
+  --venglish-orange: #ff9d5c;
+  --venglish-yellow: #ffdb58;
+  --venglish-black: #1a1a1a;
+  --venglish-gray: #666666;
+  --venglish-light-gray: #888888;
+  --venglish-gradient: linear-gradient(135deg, #ff4bb0 0%, #ffdb58 100%);
+  --venglish-bg-gradient: linear-gradient(135deg, 
+    rgba(255, 75, 176, 0.08) 0%, 
+    rgba(255, 255, 255, 1) 50%, 
+    rgba(255, 219, 88, 0.08) 100%
+  );
 }
 
 body {
   margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  color: var(--venglish-black);
+  background-color: #ffffff;
+  -webkit-font-smoothing: antialiased;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+/* ==========================================================================
+   2. ESTRUCTURA Y LAYOUT (Contenedores)
+   ========================================================================== */
+.main-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden; /* Evita scroll lateral por los blobs */
+  background: var(--venglish-bg-gradient);
+}
+
+.section-wrapper {
+  width: 100%;
   display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  justify-content: center;
+  position: relative;
+  background-color: transparent !important;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+.hero-section, .general-section {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 80px 40px;
+  position: relative;
+  text-align: center;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+/* Grids responsivos */
+.testimonial-container, .grid-container {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+  margin-top: 40px;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+.hero-image {
+  width: 100%;
+  max-width: 500px; /* Tamaño ideal para que no tape todo en 27" */
+  height: auto;
+  border-radius: 30px; /* Bordes redondeados para que sea suave */
+  margin: 20px auto 40px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  display: block;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* ==========================================================================
+   3. COMPONENTES (Cards y Botones)
+   ========================================================================== */
+
+/* Tarjetas */
+.venglish-card {
+  position: relative;
+  background: white;
+  border-radius: 20px;
+  padding: 40px 30px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+  flex: 1;
+  min-width: 280px;
+  max-width: 350px; /* Evita que crezcan demasiado en 27" */
+}
+
+.venglish-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 40px rgba(255, 75, 176, 0.15);
+}
+
+
+.hero-actions {
+  margin-top: 40px; 
+  display: flex;
+  justify-content: center;
+  gap: 20px; 
+  width: 100%;
+}
+
+
+.hero-actions .login-btn {
+  padding: 15px 45px; /* Botón un poco más robusto */
+  font-size: 1.1rem;
+}
+
+/* Botones */
+.login-btn, .btn-venglish {
+  background: var(--venglish-gradient);
+  color: white;
+  border: none;
+  padding: 12px 35px;
+  border-radius: 50px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: transform 0.2s, opacity 0.3s;
+  box-shadow: 0 4px 15px rgba(255, 75, 176, 0.3);
+}
+
+.login-btn:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   4. TIPOGRAFÍA Y ELEMENTOS VISUALES
+   ========================================================================== */
+.section-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+  background: var(--venglish-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.main-slogan {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
+
+.hero-description {
+  color: #444;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto 30px;
+  line-height: 1.6;
+}
+
+.section-subtitle {
+  color: var(--venglish-gray);
+  margin-bottom: 40px;
+}
+
+/* Iconos y Listas */
+.icon-circle {
+  width: 60px;
+  height: 60px;
+  background: #fff0f9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 2rem;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+  margin: 25px 0;
+  line-height: 2;
+}
+
+
+/* ==========================================================================
+   5. DECORACIONES (Blobs)
+   ========================================================================== */
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  z-index: -1;
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+.blob-1 { 
+  width: 700px;
+  height: 700px;
+  top: -120px; 
+  left: -250px; 
+  background: linear-gradient(135deg, rgba(255, 75, 176, 0.3) 0%, rgba(255, 219, 88, 0.3) 100%);
+}
+
+.blob-2 { 
+  width: 750px;
+  height: 750px;
+  bottom: 15%; 
+  right: -300px; 
+  background: linear-gradient(135deg, rgba(255, 219, 88, 0.25) 0%, rgba(255, 75, 176, 0.25) 100%);
+}
+
+/* ==========================================================================
+   6. OTROS Y FOOTER
+   ========================================================================== */
+.main-logo {
+  width: 200px;
+  border-radius: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.main-footer {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--venglish-light-gray);
+  font-size: 0.9rem;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.footer-links a {
+  color: var(--venglish-light-gray);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.footer-links a:hover {
+  color: var(--venglish-pink);
 }

@@ -11,11 +11,13 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AddStudent from "./pages/AddStudent";
 import ListStudents from "./pages/ListStudents"; // No olvides crear este archivo
+import Navbar from "./components/Navbar/Navbar"
+
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  
   // Verificación de sesión inicial
   useEffect(() => {
     fetch("http://127.0.0.1:5000/api/me", { credentials: "include" })
@@ -34,8 +36,12 @@ function App() {
 
   return (
     <Router>
+      <Navbar user={user} /> {/* El Navbar ahora sabe si mostrar Login o Mi Panel */}
       <Routes>
         {/* Rutas Públicas */}
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<StudentLogin setUser={setUser} />} />
+        <Route path="/register" element={<StudentRegister />} />
         <Route path="/" element={<Index />} />
         <Route path="/register" element={<StudentRegister />} />
         

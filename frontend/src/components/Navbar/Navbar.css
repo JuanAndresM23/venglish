@@ -1,0 +1,172 @@
+/* src/components/Navbar/Navbar.css */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 5%;
+    
+    /* DEGRADADO LEVE: Usamos RGBA para que sea semitransparente */
+    /* Va de un blanco casi puro a un rosa/naranja muy sutil */
+    background: linear-gradient(
+        135deg, 
+        rgba(255, 255, 255, 0.9) 0%, 
+        rgba(255, 230, 240, 0.8) 50%,
+        rgba(255, 240, 230, 0.8) 100%
+    );
+
+    /* EFECTO DESENFOQUE: Esto hace que se vea premium */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    /* SOMBRA MÁS SUAVE: Menos negra, más gris claro */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.nav-logo {
+    height: 60px;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+}
+
+.nav-logo:hover {
+    transform: scale(1.05);
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.nav-link {
+    text-decoration: none;
+    /* Volvemos al gris oscuro pero más suave para que sea legible */
+    color: #555; 
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    /* El rosa de Venglish solo aparece al pasar el mouse */
+    color: #ff4bb0; 
+    transform: translateY(-1px);
+}
+
+.login-btn {
+    background: linear-gradient(135deg, #ff4bb0 0%, #ffdb58 100%);
+    color: #fff;
+    padding: 10px 25px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(255, 75, 176, 0.3);
+    transition: opacity 0.3s ease;
+}
+
+.login-btn:hover {
+    opacity: 0.9;
+}
+
+.dashboard-btn {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 10px 25px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background 0.3s ease;
+}
+
+.dashboard-btn:hover {
+    background: #333;
+}
+
+.auth-options {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.admin-link-tiny {
+    text-decoration: none;
+    color: #9e9b9b;
+    font-size: 0.75rem; /* Muy pequeño y discreto */
+    transition: color 0.3s;
+}
+
+.admin-link-tiny:hover {
+    color: #ff4bb0;
+}
+
+.user-logged {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logout-link {
+    background: none;
+    border: none;
+    color: #ff4bb0;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-decoration: underline;
+}
+
+/* BOTÓN HAMBURGUESA - Oculto por defecto */
+.menu-toggle {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    background: none;
+    border: none;
+    gap: 5px;
+}
+
+.bar {
+    width: 25px;
+    height: 3px;
+    background-color: #333;
+    transition: 0.3s;
+    border-radius: 2px;
+}
+
+/* RESPONSIVE: Tablets y Celulares */
+@media (max-width: 768px) {
+    .menu-toggle {
+        display: flex; /* Mostramos el botón */
+    }
+
+    .nav-links {
+        display: none; /* Escondemos los links normales */
+        flex-direction: column;
+        position: absolute;
+        top: 65px; /* Altura del navbar */
+        left: 0;
+        width: 100%;
+        background-color: white;
+        padding: 20px 0;
+        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        gap: 20px;
+    }
+
+    .nav-links.active {
+        display: flex; /* Se muestra cuando isOpen es true */
+    }
+
+    .login-btn, .dashboard-btn {
+        width: 80%; /* Botones más grandes en móvil */
+        text-align: center;
+    }
+
+    /* Animación de la hamburguesa a una "X" */
+    .bar.open:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); }
+    .bar.open:nth-child(2) { opacity: 0; }
+    .bar.open:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); }
+}
