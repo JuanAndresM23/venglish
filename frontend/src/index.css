@@ -76,6 +76,15 @@ body {
    3. COMPONENTES (Cards y Botones)
    ========================================================================== */
 
+
+   .testimonial-swiper {
+  padding-bottom: 40px !important; /* Espacio para los puntitos */
+}
+
+.swiper-pagination-bullet-active {
+  background: #ae47ce !important; /* El color principal de Venglish */
+}
+
 /* Tarjetas */
 .venglish-card {
   position: relative;
@@ -213,6 +222,18 @@ body {
 /* ==========================================================================
    6. OTROS Y FOOTER
    ========================================================================== */
+   summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] summary svg {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease;
+}
+
+details summary svg {
+  transition: transform 0.3s ease;
+}
 .main-logo {
   width: 200px;
   border-radius: 20px;
@@ -242,4 +263,29 @@ body {
 
 .footer-links a:hover {
   color: var(--venglish-pink);
+}
+
+/* Estilo para los Títulos (Slogan, Nombres de Cards, etc.) */
+.main-slogan, .section-title, h3 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800; /* Super negrita */
+  color: #000000;   /* Negro puro como el logo */
+  letter-spacing: -0.5px; /* Junta un poquito las letras como en el logo */
+  text-transform: none; /* Mantener mayúsculas/minúsculas naturales */
+}
+
+/* Estilo para los textos descriptivos y listas */
+p, li, .benefits-list li {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500; /* Un poco más grueso que el normal (que es 400) */
+  color: #333;      /* Un gris muy oscuro para que se lea fácil */
+}
+
+/* El pequeño slogan debajo del título principal */
+.section-subtitle {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase; /* Como el "YOUR ENGLISH YOUR WAY" del logo */
+  letter-spacing: 2px;
+  font-size: 0.8rem;
 }

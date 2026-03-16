@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import { Box, Button, Checkbox, Typography, colors } from "@mui/material";
-import Grid from "@mui/material/Grid"; // Usamos el Grid estándar por compatibilidad
+import { Box, Button, Checkbox, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import "../components/StudentLogin.css";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import "../components/StudentLogin.css";
 
 export default function StudentLogin({ setUser }) {
   const [code, setCode] = useState("");
@@ -11,7 +10,7 @@ export default function StudentLogin({ setUser }) {
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-    e.preventDefault(); // Ahora el botón del diseño dispara esto
+    e.preventDefault();
     const formData = new FormData();
     formData.append("student_code", code);
     formData.append("password", password);
@@ -36,133 +35,141 @@ export default function StudentLogin({ setUser }) {
   return (
     <Box
       sx={{
-        flexGrow: 1,
+        minHeight: "100vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        minHeight: "100vh",
         background: "linear-gradient(135deg, #ffafbd 0%, #ffc3a0 100%)",
+        p: 2,
       }}
     >
-      <Grid container justifyContent="center">
-        <Grid item xs={12} sm={8} md={6} lg={5} xl={4}>
-          <Box
-            sx={{
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
-              backdropFilter: "blur(15px)",
-              p: { xs: 3, md: 6 }, // Aumentamos el padding interno (p) para que respire más
-              width: "100%", // Que ocupe todo el ancho del Grid
-              maxWidth: "550px", // Limita el ancho máximo para que no se estire infinito en 27"
-              borderRadius: "30px",
-              boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-              border: "1px solid rgba(255,255,255,0.3)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
-            <Box width="100%">
-              <Box
-                display="flex"
-                flexDirection="column"
-                alignItems="center"
-                mb={4}
-              >
-                {/* LOGO VENGLISH */}
-                <Box
-                  sx={{
-                    mt: 2,
-                    width: "80px",
-                    height: "80px",
-                    borderRadius: "50%",
-                    overflow: "hidden",
-                    boxShadow: `0 0 20px rgba(255, 75, 176, 0.5)`,
-                  }}
-                >
-                  <AccountCircleIcon sx={{ fontSize: 80, color: "white" }} />
-                </Box>
-
-                <Typography
-                  color="white"
-                  fontWeight="bold"
-                  variant="h5"
-                  sx={{ mt: 3, textAlign: "center" }}
-                >
-                  Welcome to Venglish
-                </Typography>
-                <Typography
-                  color="white"
-                  sx={{ opacity: 0.8, textAlign: "center" }}
-                >
-                  Sign in to continue your learning
-                </Typography>
-              </Box>
-
-              {/* FORMULARIO */}
-              <form onSubmit={handleLogin}>
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <input
-                    type="text"
-                    placeholder="Student Code"
-                    className="custom-mui-input"
-                    onChange={(e) => setCode(e.target.value)}
-                    required
-                  />
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    className="custom-mui-input"
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-
-                  <Box
-                    display="flex"
-                    flexDirection="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    color="white"
-                  >
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                      <Checkbox
-                        disableRipple
-                        sx={{
-                          p: 0,
-                          pr: 1,
-                          color: "white",
-                          "&.Mui-checked": { color: "white" },
-                        }}
-                      />
-                      <Typography variant="body2">Remember me</Typography>
-                    </div>
-                    <Typography
-                      variant="body2"
-                      sx={{ cursor: "pointer", textDecoration: "underline" }}
-                    >
-                      Forgot password?
-                    </Typography>
-                  </Box>
-
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    fullWidth
-                    sx={{
-                      mt: 2,
-                      py: 1.5,
-                      borderRadius: "12px",
-                      backgroundColor: "#ff4bb0",
-                      "&:hover": { backgroundColor: "#e03a9d" },
-                      boxShadow: `0 4px 15px rgba(255, 75, 176, 0.4)`,
-                    }}
-                  >
-                    Login
-                  </Button>
-                </Box>
-              </form>
-            </Box>
+      {/* Contenedor Principal con bordes redondeados y sombra */}
+      <Grid 
+        container 
+        sx={{ 
+          maxWidth: "1000px", 
+          width: "100%", 
+          borderRadius: "30px", 
+          overflow: "hidden", 
+          boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
+          backgroundColor: "rgba(255, 255, 255, 0.15)",
+          backdropFilter: "blur(15px)",
+          border: "1px solid rgba(255,255,255,0.3)",
+        }}
+      >
+        
+        {/* LADO IZQUIERDO: TITLEBOX (Solo visible en tablets/PC) */}
+        <Grid 
+          item 
+          xs={0} md={6} 
+          sx={{ 
+            display: { xs: "none", md: "flex" },
+            background: "linear-gradient(135deg, #ff61d2 0%, #ffde59 100%)", // Colores de tu logo
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            p: 4,
+            textAlign: "left"
+          }}
+        >
+          <Box>
+            <Typography variant="h3" fontWeight="bold" color="white" mb={2} sx={{ lineHeight: 1.2 }}>
+              Únete a nuestra <br /> Comunidad
+            </Typography>
+            <Typography variant="h6" color="white" sx={{ opacity: 0.9 }}>
+              ¡Lleva tu inglés al siguiente nivel con Venglish!
+            </Typography>
           </Box>
         </Grid>
+
+        {/* LADO DERECHO: FORMULARIO */}
+        <Grid 
+          item 
+          xs={12} md={6} 
+          sx={{ 
+            p: { xs: 4, md: 8 }, 
+            display: "flex", 
+            flexDirection: "column", 
+            justifyContent: "center" 
+          }}
+        >
+          <Box width="100%">
+            <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
+              <Box
+                sx={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  boxShadow: `0 0 20px rgba(255, 75, 176, 0.5)`,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: "rgba(255,255,255,0.2)"
+                }}
+              >
+                <AccountCircleIcon sx={{ fontSize: 60, color: "white" }} />
+              </Box>
+
+              <Typography color="white" fontWeight="bold" variant="h5" sx={{ mt: 3, textAlign: "center" }}>
+                Bienvenido a Venglish
+              </Typography>
+              <Typography color="white" sx={{ opacity: 0.8, textAlign: "center" }}>
+                Inicia sesión para continuar aprendiendo
+              </Typography>
+            </Box>
+
+            <form onSubmit={handleLogin}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <input
+                  type="text"
+                  placeholder="Código de Estudiante"
+                  className="custom-mui-input"
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Contraseña"
+                  className="custom-mui-input"
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+
+                <Box display="flex" justifyContent="space-between" alignItems="center" color="white">
+                  <Box display="flex" alignItems="center">
+                    <Checkbox
+                      disableRipple
+                      sx={{ p: 0, pr: 1, color: "white", "&.Mui-checked": { color: "white" } }}
+                    />
+                    <Typography variant="body2">Recuérdame</Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ cursor: "pointer", textDecoration: "underline" }}>
+                    ¿Olvidaste tu contraseña?
+                  </Typography>
+                </Box>
+
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  sx={{
+                    mt: 2,
+                    py: 1.5,
+                    borderRadius: "12px",
+                    backgroundColor: "#ff4bb0",
+                    fontWeight: "bold",
+                    "&:hover": { backgroundColor: "#e03a9d" },
+                    boxShadow: `0 4px 15px rgba(255, 75, 176, 0.4)`,
+                  }}
+                >
+                  Entrar
+                </Button>
+              </Box>
+            </form>
+          </Box>
+        </Grid>
+
       </Grid>
     </Box>
   );

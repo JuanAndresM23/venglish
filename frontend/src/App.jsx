@@ -10,9 +10,8 @@ import ReserveClass from "./pages/ReserveClass";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AddStudent from "./pages/AddStudent";
-import ListStudents from "./pages/ListStudents"; // No olvides crear este archivo
-import Navbar from "./components/Navbar/Navbar"
-
+import ListStudents from "./pages/ListStudents"; 
+import Navbar from "./components/Navbar/Navbar";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -36,16 +35,15 @@ function App() {
 
   return (
     <Router>
-      <Navbar user={user} /> {/* El Navbar ahora sabe si mostrar Login o Mi Panel */}
+      {/* Pasamos setUser al Navbar por si necesitas manejar el Logout ahí */}
+      <Navbar user={user} setUser={setUser} /> 
+      
       <Routes>
-        {/* Rutas Públicas */}
+        {/* 1. RUTAS PÚBLICAS */}
         <Route path="/" element={<Index />} />
-        <Route path="/login" element={<StudentLogin setUser={setUser} />} />
-        <Route path="/register" element={<StudentRegister />} />
-        <Route path="/" element={<Index />} />
-        <Route path="/register" element={<StudentRegister />} />
+        <Route path="/student-register" element={<StudentRegister />} />
         
-        {/* Logins: Si ya está logueado, lo mandamos directo al dashboard */}
+        {/* 2. LOGINS (Redirigen al dashboard si ya hay sesión) */}
         <Route 
           path="/login" 
           element={user?.is_logged_in ? <Navigate to="/dashboard" /> : <StudentLogin setUser={setUser} />} 
@@ -55,28 +53,29 @@ function App() {
           element={user?.is_logged_in ? <Navigate to="/dashboard" /> : <AdminLogin setUser={setUser} />} 
         />
 
-        {/* --- RUTAS PROTEGIDAS (ESTUDIANTES Y ADMIN) --- */}
+        {/* 3. DASHBOARD ÚNICO (Lógica de Roles) */}
         <Route 
           path="/dashboard" 
           element={
             user?.is_logged_in 
               ? (user.role === 'admin' ? <AdminDashboard /> : <StudentDashboard user={user} />) 
-              : <Navigate to="/login" />
+              : <Navigate to="/" /> 
           } 
         />
 
+        {/* 4. RUTAS PROTEGIDAS ESTUDIANTES */}
         <Route 
           path="/reserve" 
-          element={user?.is_logged_in ? <ReserveClass /> : <Navigate to="/login" />} 
+          element={user?.is_logged_in && user.role === 'student' ? <ReserveClass /> : <Navigate to="/login" />} 
         />
 
-        {/* --- RUTAS EXCLUSIVAS DE ADMIN (VICTORIA) --- */}
+        {/* 5. RUTAS PROTEGIDAS ADMIN (VICTORIA) */}
         <Route 
           path="/add-student" 
           element={
             user?.is_logged_in && user.role === 'admin' 
               ? <AddStudent /> 
-              : <Navigate to="/admin-login" />
+              : <Navigate to="/admin-login" /> 
           } 
         />
 
@@ -85,11 +84,11 @@ function App() {
           element={
             user?.is_logged_in && user.role === 'admin' 
               ? <ListStudents /> 
-              : <Navigate to="/admin-login" />
+              : <Navigate to="/admin-login" /> 
           } 
         />
 
-        {/* Redirección por defecto para rutas que no existen */}
+        {/* Redirección por defecto */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>

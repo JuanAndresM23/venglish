@@ -4,23 +4,15 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 5%;
-    
-    /* DEGRADADO LEVE: Usamos RGBA para que sea semitransparente */
-    /* Va de un blanco casi puro a un rosa/naranja muy sutil */
     background: linear-gradient(
         135deg, 
         rgba(255, 255, 255, 0.9) 0%, 
         rgba(255, 230, 240, 0.8) 50%,
         rgba(255, 240, 230, 0.8) 100%
     );
-
-    /* EFECTO DESENFOQUE: Esto hace que se vea premium */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-
-    /* SOMBRA MÁS SUAVE: Menos negra, más gris claro */
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-    
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -45,19 +37,18 @@
 
 .nav-link {
     text-decoration: none;
-    /* Volvemos al gris oscuro pero más suave para que sea legible */
     color: #555; 
-    font-weight: 500;
+    font-weight: 600; /* Un poco más grueso para que resalte */
     font-size: 0.95rem;
     transition: all 0.3s ease;
 }
 
 .nav-link:hover {
-    /* El rosa de Venglish solo aparece al pasar el mouse */
     color: #ff4bb0; 
     transform: translateY(-1px);
 }
 
+/* --- BOTONES DE ACCIÓN --- */
 .login-btn {
     background: linear-gradient(135deg, #ff4bb0 0%, #ffdb58 100%);
     color: #fff;
@@ -66,25 +57,30 @@
     text-decoration: none;
     font-weight: bold;
     box-shadow: 0 4px 10px rgba(255, 75, 176, 0.3);
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .login-btn:hover {
     opacity: 0.9;
+    transform: scale(1.02);
 }
 
-.dashboard-btn {
-    background: #1a1a1a;
-    color: #fff;
-    padding: 10px 25px;
+/* Botón de Logout: Ahora más elegante */
+.logout-link {
+    background: rgba(255, 75, 176, 0.1);
+    border: 1px solid #ff4bb0;
+    color: #ff4bb0;
+    padding: 8px 20px;
     border-radius: 50px;
-    text-decoration: none;
+    cursor: pointer;
+    font-size: 0.85rem;
     font-weight: bold;
-    transition: background 0.3s ease;
+    transition: all 0.3s ease;
 }
 
-.dashboard-btn:hover {
-    background: #333;
+.logout-link:hover {
+    background: #ff4bb0;
+    color: white;
 }
 
 .auth-options {
@@ -96,7 +92,8 @@
 .admin-link-tiny {
     text-decoration: none;
     color: #9e9b9b;
-    font-size: 0.75rem; /* Muy pequeño y discreto */
+    font-size: 0.8rem;
+    font-weight: 500;
     transition: color 0.3s;
 }
 
@@ -104,22 +101,7 @@
     color: #ff4bb0;
 }
 
-.user-logged {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.logout-link {
-    background: none;
-    border: none;
-    color: #ff4bb0;
-    cursor: pointer;
-    font-size: 0.85rem;
-    text-decoration: underline;
-}
-
-/* BOTÓN HAMBURGUESA - Oculto por defecto */
+/* --- MENÚ MÓVIL --- */
 .menu-toggle {
     display: none;
     flex-direction: column;
@@ -137,35 +119,39 @@
     border-radius: 2px;
 }
 
-/* RESPONSIVE: Tablets y Celulares */
+/* RESPONSIVE */
 @media (max-width: 768px) {
     .menu-toggle {
-        display: flex; /* Mostramos el botón */
+        display: flex;
     }
 
     .nav-links {
-        display: none; /* Escondemos los links normales */
+        display: none;
         flex-direction: column;
         position: absolute;
-        top: 65px; /* Altura del navbar */
+        top: 100%; /* Justo debajo del navbar */
         left: 0;
         width: 100%;
-        background-color: white;
-        padding: 20px 0;
-        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-        gap: 20px;
+        background: rgba(255, 255, 255, 0.98);
+        padding: 30px 0;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        gap: 25px;
+        backdrop-filter: blur(10px);
     }
 
     .nav-links.active {
-        display: flex; /* Se muestra cuando isOpen es true */
+        display: flex;
     }
 
-    .login-btn, .dashboard-btn {
-        width: 80%; /* Botones más grandes en móvil */
+    .nav-link {
+        font-size: 1.1rem;
+    }
+
+    .login-btn, .logout-link {
+        width: 80%;
         text-align: center;
     }
 
-    /* Animación de la hamburguesa a una "X" */
     .bar.open:nth-child(1) { transform: rotate(45deg) translate(5px, 6px); }
     .bar.open:nth-child(2) { opacity: 0; }
     .bar.open:nth-child(3) { transform: rotate(-45deg) translate(5px, -6px); }

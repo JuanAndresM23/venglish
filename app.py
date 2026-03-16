@@ -4,14 +4,23 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from flask_cors import CORS
 from datetime import timedelta
+from flask import session
+import psycopg2
 
 app = Flask(__name__)
 app.secret_key = "Parkour2311"
 
 # --- CONFIGURACIÓN DE SEGURIDAD ---
-# Permite que el puerto de React (5173) se comunique con Flask
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
+app.config.update(
+    SESSION_COOKIE_SAMESITE='Lax', 
+    SESSION_COOKIE_SECURE=False,   
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_DOMAIN=None,    # Importante: No restrinjas el dominio
+    USE_X_FORWARDED_HOST=True,
+    SESSION_PERMANENT=True
+)
 # Configuración de sesión (1 hora de duración)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=60)
 
@@ -32,18 +41,28 @@ def admin_required(f):
 
 @app.route("/api/me")
 def get_current_user():
-    """Verifica quién está logueado para que React sepa qué mostrar"""
-    if "student_id" in session:
+    # Depuración: esto imprimirá en tu consola de Flask qué hay dentro de la sesión
+    print(f"Contenido de la sesión actual: {dict(session)}")
+
+    # Caso Estudiante
+    if session.get("role") == "student" or "student_id" in session:
         return jsonify({
             "is_logged_in": True, 
             "role": "student", 
-            "user_id": session["student_id"], 
+            "user_id": session.get("student_id"), 
             "name": session.get("student_name")
-        })
-    elif "admin" in session:
-        return jsonify({"is_logged_in": True, "role": "admin"})
+        }), 200
     
-    return jsonify({"is_logged_in": False}), 401
+    # Caso Admin
+    elif session.get("role") == "admin" or "admin" in session:
+        return jsonify({
+            "is_logged_in": True, 
+            "role": "admin",
+            "name": "Victoria" 
+        }), 200
+    
+    # Caso No logueado
+    return jsonify({"is_logged_in": False, "role": None}), 401
 
 @app.route("/api/logout")
 def logout():
@@ -71,25 +90,40 @@ def student_login():
 @app.route("/api/student_register", methods=["POST"])
 def student_register():
     data = request.json
+    student_code = data.get('student_code')
+    new_password = data.get('password')
+    
+    if not student_code or not new_password:
+        return jsonify({"error": "Código y contraseña son requeridos"}), 400
+
     conn = get_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT id FROM students WHERE student_code=%s", (data.get('student_code'),))
-    student_exists = cursor.fetchone()
+    # Buscamos si el código existe
+    cursor.execute("SELECT id, password FROM students WHERE student_code=%s", (student_code,))
+    student = cursor.fetchone()
 
-    if student_exists:
+    if not student:
+        return jsonify({"error": "Este código no existe en el sistema."}), 404
+    
+    # Si ya tiene password, es que ya se registró antes
+    if student[1]:
+        return jsonify({"error": "Este código ya fue utilizado para crear una cuenta."}), 400
+
+    try:
+        # Solo actualizamos la contraseña. Nombre y correo ya los puso Victoria.
+        hashed_pw = generate_password_hash(new_password)
         cursor.execute(
-            "UPDATE students SET name=%s, email=%s, password=%s WHERE student_code=%s",
-            (data.get('name'), data.get('email'), generate_password_hash(data.get('password')), data.get('student_code'))
+            "UPDATE students SET password=%s WHERE student_code=%s",
+            (hashed_pw, student_code)
         )
         conn.commit()
-        response = jsonify({"message": "Registro completado con éxito"})
-    else:
-        response = (jsonify({"error": "Código inválido. Contacta a Victoria."}), 400)
-    
-    cursor.close()
-    conn.close()
-    return response
+        return jsonify({"message": "¡Contraseña creada! Ya puedes iniciar sesión."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route("/api/my_classes")
 def my_classes():
@@ -152,17 +186,30 @@ def api_reserve():
 @app.route("/api/admin_login", methods=["POST"])
 def admin_login():
     data = request.json
-    db = get_connection()
-    cur = db.cursor()
-    cur.execute("SELECT password FROM admins WHERE username=%s", (data.get('username'),))
-    admin_data = cur.fetchone()
-    cur.close()
-    db.close()
+    username = data.get('username')
+    password = data.get('password')
 
-    if admin_data and check_password_hash(admin_data[0], data.get('password')):
+    conn = get_connection()
+    if conn is None:
+        return jsonify({"error": "Error de conexión a la base de datos"}), 500
+
+    cur = conn.cursor()
+    # Buscamos al admin
+    cur.execute("SELECT id, username, password FROM admins WHERE username = %s", (username,))
+    admin = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if admin and check_password_hash(admin[2], password):
+        session.clear()
+        session.permanent = True
         session["admin"] = True
-        return jsonify({"message": "Bienvenida, Victoria"})
-    return jsonify({"error": "Credenciales de admin incorrectas"}), 401
+        session["role"] = "admin"
+        session["user_id"] = admin[0]
+        return jsonify({"message": "Bienvenida Victoria"}), 200
+    
+    return jsonify({"error": "Credenciales inválidas"}), 401
 
 @app.route("/api/admin/dashboard")
 @admin_required
