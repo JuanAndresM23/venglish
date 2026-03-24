@@ -45,7 +45,7 @@ export default function AdminLogin({ setUser }) {
     console.error("Error crítico:", err);
     alert("No se pudo conectar con el servidor. Verifica que Flask esté corriendo.");
   }
-};
+}
 
   return (
     <Box

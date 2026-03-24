@@ -1,21 +1,36 @@
-.custom-mui-input {
-    width: 90%;
-    padding: 15px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    font-size: 1rem;
-    outline: none;
-    transition: all 0.3s ease;
+:root {
+  --venglish-pink: #ff4bb0;
+  --venglish-orange: #ff9d5c;
+  --venglish-yellow: #ffdb58;
+  --venglish-black: #1a1a1a;
+  --venglish-gradient: linear-gradient(135deg, #ff4bb0 0%, #ffdb58 100%);
+  /* Fondo suave: rosa muy claro -> blanco -> amarillo muy claro */
+  --venglish-bg-gradient: linear-gradient(135deg, 
+    rgba(255, 75, 176, 0.1) 0%, 
+    rgba(255, 255, 255, 1) 50%, 
+    rgba(255, 219, 88, 0.1) 100%
+  );
 }
 
-.custom-mui-input::placeholder {
-    color: rgba(255, 255, 255, 0.7);
+/* Estilo para los inputs personalizados */
+.custom-mui-input {
+  width: 100%;
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .custom-mui-input:focus {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: white;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+  border-color: var(--venglish-pink);
+  box-shadow: 0 0 10px rgba(255, 75, 176, 0.2);
+  background: #fff;
+}
+
+.custom-mui-input::placeholder {
+  color: #999;
 }

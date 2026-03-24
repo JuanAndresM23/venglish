@@ -2,35 +2,47 @@ import React, { useState } from "react";
 import { Box, Button, Checkbox, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import "../components/StudentLogin.css";
 
 export default function StudentLogin({ setUser }) {
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append("student_code", code);
-    formData.append("password", password);
+ const handleLogin = async (e) => {
+  e.preventDefault();
+  const loginData = {
+    student_code: code,
+    password: password
+  };
 
-    const res = await fetch("http://127.0.0.1:5000/student_login", {
+  try {
+    // 1. URL corregida a /api/student_login para coincidir con Python
+    const res = await fetch("http://localhost:5000/api/student_login", {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(loginData),
+      credentials: "include", // <--- VITAL PARA GUARDAR LA SESIÓN
     });
 
     if (res.ok) {
-      const userRes = await fetch("http://127.0.0.1:5000/api/me", {
+      // 2. Si el login fue bien, pedimos los datos a /api/me
+      const userRes = await fetch("http://localhost:5000/api/me", {
         credentials: "include",
       });
       const userData = await userRes.json();
-      setUser(userData);
-      navigate("/dashboard");
+      
+      if (userData.is_logged_in) {
+        setUser(userData);
+        navigate("/dashboard");
+      }
     } else {
-      alert("Código o contraseña incorrectos");
+      const errorData = await res.json();
+      alert(errorData.error || "Código o contraseña incorrectos");
     }
-  };
+  } catch (error) {
+    console.error("Error de conexión:", error);
+  }
+};
 
   return (
     <Box
@@ -39,11 +51,10 @@ export default function StudentLogin({ setUser }) {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "linear-gradient(135deg, #ffafbd 0%, #ffc3a0 100%)",
+        background: "var(--venglish-bg-gradient)", // Usa tu variable del index.css
         p: 2,
       }}
     >
-      {/* Contenedor Principal con bordes redondeados y sombra */}
       <Grid 
         container 
         sx={{ 
@@ -51,71 +62,64 @@ export default function StudentLogin({ setUser }) {
           width: "100%", 
           borderRadius: "30px", 
           overflow: "hidden", 
-          boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
-          backgroundColor: "rgba(255, 255, 255, 0.15)",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
+          backgroundColor: "rgba(255, 255, 255, 0.4)", // Más sólido para legibilidad
           backdropFilter: "blur(15px)",
-          border: "1px solid rgba(255,255,255,0.3)",
+          border: "1px solid rgba(255,255,255,0.5)",
         }}
       >
-        
-        {/* LADO IZQUIERDO: TITLEBOX (Solo visible en tablets/PC) */}
+        {/* LADO IZQUIERDO: BANNER (Vibrante) */}
         <Grid 
-          item 
-          xs={0} md={6} 
+          item xs={0} md={6} 
           sx={{ 
             display: { xs: "none", md: "flex" },
-            background: "linear-gradient(135deg, #ff61d2 0%, #ffde59 100%)", // Colores de tu logo
+            background: "var(--venglish-gradient)", // Rosa a Amarillo
             flexDirection: "column",
             justifyContent: "center",
             alignItems: "center",
             p: 4,
-            textAlign: "left"
           }}
         >
-          <Box>
-            <Typography variant="h3" fontWeight="bold" color="white" mb={2} sx={{ lineHeight: 1.2 }}>
+          <Box sx={{ color: "white", textAlign: "center" }}>
+            <Typography variant="h3" fontWeight="bold" mb={2}>
               Únete a nuestra <br /> Comunidad
             </Typography>
-            <Typography variant="h6" color="white" sx={{ opacity: 0.9 }}>
+            <Typography variant="h6" sx={{ opacity: 0.9 }}>
               ¡Lleva tu inglés al siguiente nivel con Venglish!
             </Typography>
           </Box>
         </Grid>
 
-        {/* LADO DERECHO: FORMULARIO */}
+        {/* LADO DERECHO: FORMULARIO (Limpio) */}
         <Grid 
-          item 
-          xs={12} md={6} 
+          item xs={12} md={6} 
           sx={{ 
             p: { xs: 4, md: 8 }, 
             display: "flex", 
             flexDirection: "column", 
-            justifyContent: "center" 
+            justifyContent: "center",
+            backgroundColor: "white" 
           }}
         >
           <Box width="100%">
             <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
               <Box
                 sx={{
-                  width: "80px",
-                  height: "80px",
-                  borderRadius: "50%",
-                  overflow: "hidden",
-                  boxShadow: `0 0 20px rgba(255, 75, 176, 0.5)`,
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: "rgba(255,255,255,0.2)"
+                  width: "80px", height: "80px", borderRadius: "50%",
+                  display: "flex", justifyContent: "center", alignItems: "center",
+                  backgroundColor: "rgba(255, 75, 176, 0.1)",
+                  border: "2px solid var(--venglish-pink)"
                 }}
               >
-                <AccountCircleIcon sx={{ fontSize: 60, color: "white" }} />
+                <AccountCircleIcon sx={{ fontSize: 50, color: "var(--venglish-pink)" }} />
               </Box>
 
-              <Typography color="white" fontWeight="bold" variant="h5" sx={{ mt: 3, textAlign: "center" }}>
+              {/* Cambiamos color="white" por "textPrimary" para que se vea en el fondo claro */}
+              <Typography color="textPrimary" fontWeight="bold" variant="h5" sx={{ mt: 3 }}>
                 Bienvenido a Venglish
               </Typography>
-              <Typography color="white" sx={{ opacity: 0.8, textAlign: "center" }}>
-                Inicia sesión para continuar aprendiendo
+              <Typography color="textSecondary">
+                Inicia sesión para continuar
               </Typography>
             </Box>
 
@@ -124,27 +128,26 @@ export default function StudentLogin({ setUser }) {
                 <input
                   type="text"
                   placeholder="Código de Estudiante"
-                  className="custom-mui-input"
+                  className="custom-mui-input" // Estilo del index.css
                   onChange={(e) => setCode(e.target.value)}
                   required
                 />
                 <input
                   type="password"
                   placeholder="Contraseña"
-                  className="custom-mui-input"
+                  className="custom-mui-input" // Estilo del index.css
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
 
-                <Box display="flex" justifyContent="space-between" alignItems="center" color="white">
+                <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Box display="flex" alignItems="center">
                     <Checkbox
-                      disableRipple
-                      sx={{ p: 0, pr: 1, color: "white", "&.Mui-checked": { color: "white" } }}
+                      sx={{ color: "var(--venglish-pink)", "&.Mui-checked": { color: "var(--venglish-pink)" } }}
                     />
-                    <Typography variant="body2">Recuérdame</Typography>
+                    <Typography variant="body2" color="textSecondary">Recuérdame</Typography>
                   </Box>
-                  <Typography variant="body2" sx={{ cursor: "pointer", textDecoration: "underline" }}>
+                  <Typography variant="body2" sx={{ color: "var(--venglish-pink)", cursor: "pointer" }}>
                     ¿Olvidaste tu contraseña?
                   </Typography>
                 </Box>
@@ -154,13 +157,10 @@ export default function StudentLogin({ setUser }) {
                   variant="contained"
                   fullWidth
                   sx={{
-                    mt: 2,
-                    py: 1.5,
-                    borderRadius: "12px",
-                    backgroundColor: "#ff4bb0",
+                    mt: 2, py: 1.5, borderRadius: "12px",
+                    backgroundColor: "var(--venglish-pink)",
                     fontWeight: "bold",
                     "&:hover": { backgroundColor: "#e03a9d" },
-                    boxShadow: `0 4px 15px rgba(255, 75, 176, 0.4)`,
                   }}
                 >
                   Entrar
@@ -169,7 +169,6 @@ export default function StudentLogin({ setUser }) {
             </form>
           </Box>
         </Grid>
-
       </Grid>
     </Box>
   );

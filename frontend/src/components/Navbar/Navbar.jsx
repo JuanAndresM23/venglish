@@ -48,7 +48,7 @@ export default function Navbar({ user, setUser }) {
         {user && user.role === "student" && (
           <>
             <Link className="nav-link" to="/dashboard" onClick={() => setIsOpen(false)}>Mi Panel</Link>
-            <Link className="nav-link" to="/reserve-class" onClick={() => setIsOpen(false)}>Reservar Clases</Link>
+            <Link className="nav-link" to="/reserve" onClick={() => setIsOpen(false)}>Reservar Clases</Link>
           </>
         )}
 

@@ -5,6 +5,7 @@ from functools import wraps
 from flask_cors import CORS
 from datetime import timedelta
 from flask import session
+from datetime import datetime, timedelta
 import psycopg2
 
 app = Flask(__name__)
@@ -84,7 +85,9 @@ def student_login():
     if student and check_password_hash(student[2], data.get('password')):
         session["student_id"] = student[0]
         session["student_name"] = student[1]
-        return jsonify({"message": "Login exitoso"})
+        session["role"] = "student"  # <--- ESTO ES VITAL PARA api/me
+        return jsonify({"message": "Login exitoso"}), 200
+        
     return jsonify({"error": "Código o contraseña incorrectos"}), 401
 
 @app.route("/api/student_register", methods=["POST"])
@@ -153,32 +156,62 @@ def my_classes():
     conn.close()
     return jsonify(classes)
 
-@app.route("/api/reserve", methods=["GET", "POST"])
-def api_reserve():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    if request.method == "GET":
-        # Para llenar el dropdown de cursos en React
-        cursor.execute("SELECT id, course_name FROM courses")
-        courses = [{"id": r[0], "name": r[1]} for r in cursor.fetchall()]
-        cursor.close()
-        conn.close()
-        return jsonify(courses)
-
-    # Lógica POST para guardar la reserva
+@app.route("/api/reserve", methods=["POST"])
+def post_reserve():
+    student_id = session.get("student_id")
+    if not student_id:
+        return jsonify({"error": "No autorizado"}), 401
+        
     data = request.json
+    course_id = data.get('course_id')
+    date_str = data.get('date') # Formato: "2026-03-20"
+    time_str = data.get('time') # Formato: "12:00"
+
+    # Convertimos a objeto datetime para calcular el rango de la clase (1 hora)
+    # Una clase de las 12:00 ocupa de 12:00 a 13:00. 
+    # Bloquearemos cualquier reserva que empiece entre las 11:01 y las 12:59.
+    requested_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+    start_limit = (requested_time - timedelta(minutes=59)).strftime("%H:%M:%S")
+    end_limit = (requested_time + timedelta(minutes=59)).strftime("%H:%M:%S")
+
+    conn = get_connection()
+    cur = conn.cursor()
+
     try:
-        cursor.execute(
-            "INSERT INTO bookings (student_id, course_id, class_date, class_time) VALUES (%s, %s, %s, %s)",
-            (session["student_id"], data['course_id'], data['date'], data['time'])
-        )
+        # REGLA 1: ¿EL PROPIO ESTUDIANTE YA TIENE UNA CLASE A ESA HORA?
+        cur.execute("""
+            SELECT id FROM bookings 
+            WHERE student_id = %s AND class_date = %s 
+            AND class_time > %s AND class_time < %s
+        """, (student_id, date_str, start_limit, end_limit))
+        
+        if cur.fetchone():
+            return jsonify({"error": "Ya tienes una clase registrada en este horario"}), 400
+
+        # REGLA 2: ¿EL HORARIO YA ESTÁ OCUPADO POR OTRO ESTUDIANTE?
+        cur.execute("""
+            SELECT id FROM bookings 
+            WHERE class_date = %s 
+            AND class_time > %s AND class_time < %s
+        """, (date_str, start_limit, end_limit))
+
+        if cur.fetchone():
+            return jsonify({"error": "Este horario ya no está disponible"}), 400
+
+        # Si pasa las reglas, guardamos
+        cur.execute("""
+            INSERT INTO bookings (course_id, student_id, class_date, class_time)
+            VALUES (%s, %s, %s, %s)
+        """, (course_id, student_id, date_str, time_str))
+        
         conn.commit()
-        return jsonify({"message": "Clase reservada con éxito"})
+        return jsonify({"message": "Reserva confirmada"}), 201
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error: {e}")
+        return jsonify({"error": "Error en el servidor"}), 500
     finally:
-        cursor.close()
+        cur.close()
         conn.close()
 
 # --- RUTAS DE ADMINISTRADOR (VICTORIA) ---
@@ -249,17 +282,30 @@ def api_list_students():
 @admin_required
 def api_add_student():
     data = request.json
+    
+    # Usamos .get() con un valor por defecto (None o "") 
+    # para que no explote si Victoria deja el teléfono en blanco
+    name = data.get('name')
+    phone = data.get('phone', '')
+    email = data.get('email', '')
+    student_code = data.get('student_code')
+
+    if not name or not student_code:
+        return jsonify({"error": "Nombre y Código son obligatorios"}), 400
+
     conn = get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(
             "INSERT INTO students (name, phone, email, student_code) VALUES (%s, %s, %s, %s)",
-            (data['name'], data['phone'], data['email'], data['student_code'])
+            (name, phone, email, student_code)
         )
         conn.commit()
-        return jsonify({"message": "Estudiante pre-registrado correctamente"})
+        return jsonify({"message": "Estudiante pre-registrado correctamente"}), 201
     except Exception as e:
-        return jsonify({"error": "Código o email ya existen"}), 400
+        # Imprime el error real en tu consola de Flask para que tú sepas qué pasó
+        print(f"Error en DB: {e}") 
+        return jsonify({"error": "El Código o Email ya están registrados"}), 400
     finally:
         cursor.close()
         conn.close()
