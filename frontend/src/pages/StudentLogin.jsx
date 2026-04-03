@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Box, Button, Checkbox, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import "../css/StudentLogin.css";
 
 export default function StudentLogin({ setUser }) {
   const [code, setCode] = useState("");

@@ -16,7 +16,7 @@ import { CiFacebook } from "react-icons/ci";
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'aos/dist/aos.css';
-import "../index.css";
+import "../css/index.css";
 import heroImg from "../assets/hero-students.png";
 
 export default function Index() {

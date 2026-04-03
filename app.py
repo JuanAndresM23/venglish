@@ -156,20 +156,36 @@ def my_classes():
     conn.close()
     return jsonify(classes)
 
-@app.route("/api/reserve", methods=["POST"])
+@app.route("/api/reserve", methods=["GET", "POST"])
 def post_reserve():
+    if request.method == "GET":
+        conn = get_connection()
+        cur = conn.cursor()
+        try:
+            # 1. Cambiamos 'name' por 'course_name'
+            cur.execute("SELECT id, course_name FROM courses") 
+            rows = cur.fetchall()
+            
+            # 2. Mapeamos el resultado (r[1] es 'course_name') 
+            # a la clave 'name' para que tu React no tenga que cambiar nada
+            return jsonify([{"id": r[0], "name": r[1]} for r in rows]), 200
+        except Exception as e:
+            print(f"Error cargando cursos: {e}")
+            return jsonify({"error": str(e)}), 500
+        finally:
+            cur.close()
+            conn.close()
+
+    # --- TU LÓGICA EXISTENTE PARA GUARDAR (POST) ---
     student_id = session.get("student_id")
     if not student_id:
         return jsonify({"error": "No autorizado"}), 401
         
     data = request.json
     course_id = data.get('course_id')
-    date_str = data.get('date') # Formato: "2026-03-20"
-    time_str = data.get('time') # Formato: "12:00"
+    date_str = data.get('date')
+    time_str = data.get('time')
 
-    # Convertimos a objeto datetime para calcular el rango de la clase (1 hora)
-    # Una clase de las 12:00 ocupa de 12:00 a 13:00. 
-    # Bloquearemos cualquier reserva que empiece entre las 11:01 y las 12:59.
     requested_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
     start_limit = (requested_time - timedelta(minutes=59)).strftime("%H:%M:%S")
     end_limit = (requested_time + timedelta(minutes=59)).strftime("%H:%M:%S")
@@ -178,7 +194,7 @@ def post_reserve():
     cur = conn.cursor()
 
     try:
-        # REGLA 1: ¿EL PROPIO ESTUDIANTE YA TIENE UNA CLASE A ESA HORA?
+        # REGLA 1: Estudiante duplicado
         cur.execute("""
             SELECT id FROM bookings 
             WHERE student_id = %s AND class_date = %s 
@@ -188,7 +204,7 @@ def post_reserve():
         if cur.fetchone():
             return jsonify({"error": "Ya tienes una clase registrada en este horario"}), 400
 
-        # REGLA 2: ¿EL HORARIO YA ESTÁ OCUPADO POR OTRO ESTUDIANTE?
+        # REGLA 2: Horario ocupado
         cur.execute("""
             SELECT id FROM bookings 
             WHERE class_date = %s 
@@ -198,7 +214,7 @@ def post_reserve():
         if cur.fetchone():
             return jsonify({"error": "Este horario ya no está disponible"}), 400
 
-        # Si pasa las reglas, guardamos
+        # Guardar reserva
         cur.execute("""
             INSERT INTO bookings (course_id, student_id, class_date, class_time)
             VALUES (%s, %s, %s, %s)
@@ -243,27 +259,38 @@ def admin_login():
         return jsonify({"message": "Bienvenida Victoria"}), 200
     
     return jsonify({"error": "Credenciales inválidas"}), 401
-
 @app.route("/api/admin/dashboard")
 @admin_required
 def admin_dashboard_data():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT b.id, s.name, c.course_name, b.class_date, b.class_time, s.phone, s.email
-        FROM bookings b 
-        JOIN students s ON b.student_id = s.id 
-        JOIN courses c ON b.course_id = c.id
-    """)
-    events = [{
-        "id": r[0], 
-        "title": r[1], 
-        "start": f"{r[3]}T{r[4]}", 
-        "extendedProps": {"course": r[2], "phone": r[5], "email": r[6]}
-    } for r in cursor.fetchall()]
-    cursor.close()
-    conn.close()
-    return jsonify(events)
+    try:
+        cursor.execute("""
+            SELECT b.id, s.name, c.course_name, b.class_date, b.class_time, s.phone, s.email
+            FROM bookings b 
+            JOIN students s ON b.student_id = s.id 
+            JOIN courses c ON b.course_id = c.id
+        """)
+        rows = cursor.fetchall()
+        
+        events = []
+        for r in rows:
+            events.append({
+                "id": str(r[0]),
+                "title": f"{r[1]} - {r[2]}", # Nombre Estudiante - Curso
+                "start": f"{r[3].strftime('%Y-%m-%d')}T{r[4].strftime('%H:%M:%S')}",
+                "extendedProps": {
+                    "phone": r[5],
+                    "email": r[6]
+                }
+            })
+        return jsonify(events)
+    except Exception as e:
+        print(f"ERROR SQL: {e}")
+        return jsonify([]), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route("/api/list_students")
 @admin_required

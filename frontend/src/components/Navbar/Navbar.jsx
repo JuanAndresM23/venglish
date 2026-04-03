@@ -55,7 +55,7 @@ export default function Navbar({ user, setUser }) {
         {/* --- 3. LINKS PARA MAESTROS (ADMIN) --- */}
         {user && user.role === "admin" && (
           <>
-            <Link className="nav-link" to="/admin-dashboard" onClick={() => setIsOpen(false)}>Calendario</Link>
+            <Link className="nav-link" to="/dashboard" onClick={() => setIsOpen(false)}>Calendario</Link>
             <Link className="nav-link" to="/add-student" onClick={() => setIsOpen(false)}>Registrar Alumno</Link>
             <Link className="nav-link" to="/list-students" onClick={() => setIsOpen(false)}>Lista Alumnos</Link>
           </>

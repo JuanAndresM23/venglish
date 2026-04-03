@@ -1,0 +1,98 @@
+/* ==========================================================================
+   1. VARIABLES (Tu paleta VEnglish)
+   ========================================================================== */
+:root {
+  --venglish-pink: #ff4bb0;
+  --venglish-orange: #ff9d5c;
+  --venglish-yellow: #ffdb58;
+  --venglish-black: #1a1a1a;
+  --venglish-gray: #666666;
+  --venglish-light-gray: #888888;
+  --venglish-gradient: linear-gradient(135deg, #ff4bb0 0%, #ffdb58 100%);
+  --venglish-bg-gradient: linear-gradient(135deg, 
+    rgba(255, 75, 176, 0.08) 0%, 
+    rgba(255, 255, 255, 1) 50%, 
+    rgba(255, 219, 88, 0.08) 100%
+  );
+}
+
+/* 1. Contenedor principal con TU fondo nuevo */
+.admin-page-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  padding: 40px 15px;
+  background: var(--venglish-bg-gradient); /* Usando tu variable */
+  background-attachment: fixed;
+  background-size: cover;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 2. Título con el rosa de Victoria */
+.admin-title {
+  color: var(--venglish-pink);
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  font-weight: 800;
+  margin-bottom: 30px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 3. La Tarjeta del calendario */
+.calendar-card {
+  background: #ffffff; 
+  padding: 25px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(255, 75, 176, 0.15); /* Sombra rosada sutil */
+  max-width: 1100px;
+  width: 100%;
+  border: 2px solid rgba(255, 219, 88, 0.3); /* Borde amarillento suave */
+}
+
+/* 4. Estilos para FullCalendar (VEnglish Style) */
+
+/* Título del mes */
+.fc .fc-toolbar-title {
+  color: var(--venglish-black);
+  font-size: 1.5rem !important;
+  font-weight: 700;
+}
+
+/* Botones con el degradado de Victoria */
+.fc .fc-button-primary {
+  background: var(--venglish-gradient) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 600;
+  transition: opacity 0.3s ease;
+}
+
+.fc .fc-button-primary:hover {
+  opacity: 0.8;
+  transform: scale(1.02);
+}
+
+/* Los eventos (Las clases agendadas) */
+.fc-event {
+  background-color: var(--venglish-pink) !important; /* Clases en rosa */
+  border: none !important;
+  padding: 5px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px !important;
+}
+
+/* Color de los números de los días */
+.fc .fc-daygrid-day-number {
+  color: var(--venglish-black);
+  font-weight: 500;
+  padding: 8px;
+  text-decoration: none;
+}
+
+/* Hover en los cuadros de los días */
+.fc-daygrid-day:hover {
+  background-color: rgba(255, 219, 88, 0.1) !important;
+}

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Box, Button, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
-import "../index.css"; // Llamamos al nuevo estilo global
+import "../css/index.css";
 
 export default function StudentRegister() {
   const [formData, setFormData] = useState({ 

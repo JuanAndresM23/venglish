@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Box, Button, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import "../components/StudentLogin.css"; 
+import "../css/StudentLogin.css";
+
 
 export default function AdminLogin({ setUser }) {
   const [username, setUsername] = useState("");

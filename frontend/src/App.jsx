@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AddStudent from "./pages/AddStudent";
 import ListStudents from "./pages/ListStudents"; 
 import Navbar from "./components/Navbar/Navbar";
+import "./css/App.css";
 
 function App() {
   const [user, setUser] = useState(null);
