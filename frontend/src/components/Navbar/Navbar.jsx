@@ -8,9 +8,9 @@ export default function Navbar({ user, setUser }) {
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  // Función de Logout (Asegúrate de tenerla para limpiar el estado)
   const handleLogout = () => {
-    // Aquí deberías llamar a tu API de logout si es necesario
+    // Importante: Limpiar el localStorage al salir
+    localStorage.removeItem("role_level");
     setUser(null); 
     setIsOpen(false);
     navigate("/");
@@ -57,11 +57,17 @@ export default function Navbar({ user, setUser }) {
           <>
             <Link className="nav-link" to="/dashboard" onClick={() => setIsOpen(false)}>Calendario</Link>
             <Link className="nav-link" to="/add-student" onClick={() => setIsOpen(false)}>Registrar Alumno</Link>
-            <Link className="nav-link" to="/list-students" onClick={() => setIsOpen(false)}>Lista Alumnos</Link>
+            
+            {/* VALIDACIÓN PARA VICTORIA (Nivel 1) */}
+            {(user.level === 1 || localStorage.getItem("role_level") === "1") && (
+              <Link className="nav-link" to="/list-students" onClick={() => setIsOpen(false)}>
+                Lista Alumnos
+              </Link>
+            )}
           </>
         )}
 
-        {/* --- SECCIÓN DE BOTONES DE ACCIÓN (LOGIN/LOGOUT) --- */}
+        {/* --- SECCIÓN DE BOTONES DE ACCIÓN --- */}
         <div className="nav-auth">
           {user ? (
             <button onClick={handleLogout} className="logout-link">

@@ -1,9 +1,14 @@
-import React, { useState } from "react";
-import { Box, Button, Typography, Grid } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import "../css/StudentLogin.css";
 
+
+import React, { useState } from "react";
+
+import { Box, Button, Typography, Grid } from "@mui/material";
+
+import { useNavigate } from "react-router-dom";
+
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+
+import "../css/StudentLogin.css";
 
 export default function AdminLogin({ setUser }) {
   const [username, setUsername] = useState("");
@@ -11,42 +16,55 @@ export default function AdminLogin({ setUser }) {
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-  e.preventDefault();
-  
-  try {
-    // Usamos localhost en lugar de 127.0.0.1 para que coincida con la cookie
-    const loginRes = await fetch("http://localhost:5000/api/admin_login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-      credentials: "include"
-    });
-
-    if (loginRes.ok) {
-      console.log("1. Login exitoso. Verificando sesión...");
-      
-      const userRes = await fetch("http://localhost:5000/api/me", { 
-        credentials: "include" 
+    e.preventDefault();
+    
+    try {
+      const loginRes = await fetch("http://localhost:5000/api/admin_login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+        credentials: "include"
       });
-      
-      const userData = await userRes.json();
-      
-      if (userData.is_logged_in && userData.role === 'admin') {
-        console.log("2. Admin confirmado:", userData.name);
-        setUser(userData);
-        navigate("/dashboard", { replace: true });
+
+      if (loginRes.ok) {
+        // 1. Obtenemos los datos del login (donde ahora enviamos el role_level)
+        const loginData = await loginRes.json();
+        
+        console.log("1. Login exitoso. Verificando sesión...");
+        
+        const userRes = await fetch("http://localhost:5000/api/me", { 
+          credentials: "include" 
+        });
+        
+        const userData = await userRes.json();
+        
+        if (userData.is_logged_in && userData.role === 'admin') {
+          console.log("2. Admin confirmado:", userData.name);
+          
+          // 2. Combinamos la info de sesión con el nivel de rol que vino del login
+          const completeUser = {
+            ...userData,
+            level: loginData.role_level // Agregamos el nivel (1 o 0)
+          };
+
+          // 3. Guardamos en el estado global y en localStorage para el Navbar
+          setUser(completeUser);
+          localStorage.setItem("role_level", loginData.role_level.toString());
+          
+          navigate("/dashboard", { replace: true });
+        } else {
+          alert("Error de sesión: El servidor no reconoció el login.");
+        }
       } else {
-        alert("Error de sesión: El servidor no reconoció el login.");
+        const errorData = await loginRes.json();
+        alert(errorData.error || "Credenciales incorrectas");
       }
-    } else {
-      const errorData = await loginRes.json();
-      alert(errorData.error || "Credenciales incorrectas");
+    } catch (err) {
+      console.error("Error crítico:", err);
+      alert("No se pudo conectar con el servidor.");
     }
-  } catch (err) {
-    console.error("Error crítico:", err);
-    alert("No se pudo conectar con el servidor. Verifica que Flask esté corriendo.");
-  }
-}
+  };
+
 
   return (
     <Box

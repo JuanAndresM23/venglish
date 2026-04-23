@@ -39,26 +39,38 @@ const fetchEvents = async () => {
 
   // 2. Manejar la eliminación
   const handleEventClick = async (info) => {
+    // IMPORTANTE: Asegúrate de que el ID no sea undefined
     const eventId = info.event.id;
     const eventTitle = info.event.title;
 
-    if (window.confirm(`¿Estás seguro de que deseas cancelar la clase: "${eventTitle}"?`)) {
-      try {
-        const response = await fetch(`http://127.0.0.1:5000/delete_booking/${eventId}`, {
-          method: 'DELETE', // Es mejor práctica usar DELETE que GET para borrar
-        });
-
-        if (response.ok) {
-          info.event.remove(); // Elimina visualmente
-          alert("Reserva eliminada con éxito");
-        } else {
-          alert("Error al eliminar en el servidor");
-        }
-      } catch (error) {
-        console.error("Error en la petición:", error);
-      }
+    if (!eventId) {
+        console.error("Error: El evento no tiene un ID asignado.");
+        return;
     }
-  };
+
+    if (window.confirm(`¿Estás seguro de que deseas cancelar la clase: "${eventTitle}"?`)) {
+        try {
+      const response = await fetch(`http://localhost:5000/delete_booking/${eventId}`, {
+    method: 'DELETE',
+    credentials: 'include', 
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
+
+            if (response.ok) {
+                info.event.remove(); 
+                alert("Reserva eliminada con éxito");
+            } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.error || "No se pudo eliminar"}`);
+            }
+        } catch (error) {
+            console.error("Error en la petición:", error);
+            alert("Hubo un problema de conexión con el servidor.");
+        }
+    }
+};
 
   if (loading) return <div style={{textAlign: 'center', padding: '20px'}}>Cargando agenda...</div>;
 
