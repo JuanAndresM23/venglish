@@ -16,7 +16,7 @@ export default function AddStudent() {
   const handleSubmit = async (e) => {
     e.preventDefault();
    try {
-    const res = await fetch("http://localhost:5000/api/add_student", {
+    const res = await fetch(`${API_URL}/api/add_student`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),

@@ -3,34 +3,48 @@ import { Box, Button, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import "../css/index.css";
+import API_URL from "../config"; // ← AGREGADO
 
 export default function StudentRegister() {
   const [formData, setFormData] = useState({ 
     student_code: "",
-    password: ""
+    password: "",
+    confirmPassword: "" // ← AGREGADO
   });
+  const [error, setError] = useState("");     // ← AGREGADO
+  const [success, setSuccess] = useState(""); // ← AGREGADO
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    // ← AGREGADO: Validación de contraseñas
+    if (formData.password !== formData.confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+
     try {
-      // Cambiado a localhost para consistencia
-      const res = await fetch("http://localhost:5000/api/student_register", {
+      const res = await fetch(`${API_URL}/api/student_register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          student_code: formData.student_code,
+          password: formData.password
+        })
       });
 
       if (res.ok) {
-        alert("¡Cuenta activada con éxito! Ahora puedes iniciar sesión.");
-        navigate("/login");
+        setSuccess("¡Cuenta activada con éxito! Redirigiendo..."); // ← CAMBIADO
+        setTimeout(() => navigate("/login"), 2000); // ← Redirige después de 2 segundos
       } else {
         const data = await res.json();
-        alert(data.error || "Error al registrarse. Verifica tu código.");
+        setError(data.error || "Error al registrarse. Verifica tu código."); // ← CAMBIADO
       }
     } catch (error) {
-      console.error("Error de conexión:", error);
-      alert("No se pudo conectar con el servidor.");
+      setError("No se pudo conectar con el servidor. Intenta de nuevo."); // ← CAMBIADO
     }
   };
 
@@ -41,7 +55,7 @@ export default function StudentRegister() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "var(--venglish-bg-gradient)", // Fondo nuevo
+        background: "var(--venglish-bg-gradient)",
         p: 2,
       }}
     >
@@ -59,12 +73,12 @@ export default function StudentRegister() {
         }}
       >
         
-        {/* LADO IZQUIERDO: DECORATIVO (Rosa Vibrante) */}
+        {/* LADO IZQUIERDO */}
         <Grid 
           item xs={0} md={6} 
           sx={{ 
             display: { xs: "none", md: "flex" },
-            background: "var(--venglish-gradient)", // Gradiente de marca
+            background: "var(--venglish-gradient)",
             flexDirection: "column",
             justifyContent: "center",
             alignItems: "center",
@@ -81,7 +95,7 @@ export default function StudentRegister() {
           </Box>
         </Grid>
 
-        {/* LADO DERECHO: FORMULARIO (Limpio y Blanco) */}
+        {/* LADO DERECHO: FORMULARIO */}
         <Grid 
           item xs={12} md={6} 
           sx={{ 
@@ -106,7 +120,6 @@ export default function StudentRegister() {
                 <AssignmentIndIcon sx={{ fontSize: 50, color: "var(--venglish-pink)" }} />
               </Box>
 
-              {/* Texto oscuro para contraste */}
               <Typography color="textPrimary" fontWeight="bold" variant="h5">
                 Crea tu perfil
               </Typography>
@@ -120,7 +133,7 @@ export default function StudentRegister() {
                 <input
                   type="text"
                   placeholder="Tu Código de Estudiante"
-                  className="custom-mui-input" // Estilo del index.css
+                  className="custom-mui-input"
                   onChange={e => setFormData({...formData, student_code: e.target.value})}
                   required
                 />
@@ -128,10 +141,51 @@ export default function StudentRegister() {
                 <input
                   type="password"
                   placeholder="Crea tu nueva Contraseña"
-                  className="custom-mui-input" // Estilo del index.css
+                  className="custom-mui-input"
                   onChange={e => setFormData({...formData, password: e.target.value})}
                   required
                 />
+
+                {/* ← AGREGADO: Campo confirmar contraseña */}
+                <input
+                  type="password"
+                  placeholder="Confirma tu Contraseña"
+                  className="custom-mui-input"
+                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                  required
+                />
+
+                {/* ← AGREGADO: Mensaje de error */}
+                {error && (
+                  <Typography
+                    variant="body2"
+                    textAlign="center"
+                    sx={{
+                      color: "white",
+                      backgroundColor: "#e53935",
+                      borderRadius: "8px",
+                      padding: "10px"
+                    }}
+                  >
+                    ⚠️ {error}
+                  </Typography>
+                )}
+
+                {/* ← AGREGADO: Mensaje de éxito */}
+                {success && (
+                  <Typography
+                    variant="body2"
+                    textAlign="center"
+                    sx={{
+                      color: "white",
+                      backgroundColor: "#43a047",
+                      borderRadius: "8px",
+                      padding: "10px"
+                    }}
+                  >
+                    ✅ {success}
+                  </Typography>
+                )}
 
                 <Button
                   type="submit"

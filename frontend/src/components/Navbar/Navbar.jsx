@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Navbar.css";
+import API_URL from "../../config"; // ← AGREGADO
 
 export default function Navbar({ user, setUser }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -8,12 +9,19 @@ export default function Navbar({ user, setUser }) {
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  const handleLogout = () => {
-    // Importante: Limpiar el localStorage al salir
-    localStorage.removeItem("role_level");
-    setUser(null); 
-    setIsOpen(false);
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+        await fetch(`${API_URL}/api/logout`, {
+            method: "POST",
+            credentials: "include"
+        });
+    } catch (err) {
+        console.error("Error al cerrar sesión:", err);
+    } finally {
+        localStorage.removeItem("role_level");
+        setUser(null);
+        navigate("/");
+    }
   };
 
   return (
@@ -39,7 +47,7 @@ export default function Navbar({ user, setUser }) {
         {/* --- 1. LINKS PARA USUARIOS NO LOGUEADOS --- */}
         {!user && (
           <>
-            <Link className="nav-link" to="/index" onClick={() => setIsOpen(false)}>Inicio</Link>
+            <Link className="nav-link" to="/" onClick={() => setIsOpen(false)}>Inicio</Link> {/* ← CORREGIDO /index → / */}
             <Link className="nav-link" to="/student-register" onClick={() => setIsOpen(false)}>Registro</Link>
           </>
         )}
@@ -59,7 +67,7 @@ export default function Navbar({ user, setUser }) {
             <Link className="nav-link" to="/add-student" onClick={() => setIsOpen(false)}>Registrar Alumno</Link>
             
             {/* VALIDACIÓN PARA VICTORIA (Nivel 1) */}
-            {(user.level === 1 || localStorage.getItem("role_level") === "1") && (
+            {user.level === 1 && ( // ← CORREGIDO, eliminado localStorage
               <Link className="nav-link" to="/list-students" onClick={() => setIsOpen(false)}>
                 Lista Alumnos
               </Link>

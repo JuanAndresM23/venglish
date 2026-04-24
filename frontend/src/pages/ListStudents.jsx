@@ -1,27 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { 
   Container, Table, TableBody, TableCell, TableContainer, 
-  TableHead, TableRow, Paper, Typography, Button, Box, Chip 
+  TableHead, TableRow, Paper, Typography, Button, Box, Chip, Alert
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PersonIcon from '@mui/icons-material/Person';
+import API_URL from "../config"; // ← AGREGADO
 
 export default function ListStudents() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(""); // ← AGREGADO
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/list_students", { 
+    fetch(`${API_URL}/api/list_students`, { 
       credentials: "include" 
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Error al cargar los estudiantes"); // ← AGREGADO
+        return res.json();
+      })
       .then(data => {
         setStudents(data);
         setLoading(false);
       })
       .catch(err => {
-        console.error("Error:", err);
+        setError("No se pudo cargar la lista. Intenta recargar la página."); // ← CAMBIADO
         setLoading(false);
       });
   }, []);
@@ -42,6 +47,13 @@ export default function ListStudents() {
           Volver
         </Button>
       </Box>
+
+      {/* ← AGREGADO: Mensaje de error visible */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+          ⚠️ {error}
+        </Alert>
+      )}
 
       <TableContainer component={Paper} elevation={3} sx={{ borderRadius: 2 }}>
         <Table sx={{ minWidth: 650 }} aria-label="tabla de estudiantes">

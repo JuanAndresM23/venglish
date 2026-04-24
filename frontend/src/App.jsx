@@ -13,6 +13,7 @@ import AddStudent from "./pages/AddStudent";
 import ListStudents from "./pages/ListStudents"; 
 import Navbar from "./components/Navbar/Navbar";
 import "./css/App.css";
+import API_URL from "./config";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -20,7 +21,7 @@ function App() {
   
   // Verificación de sesión inicial
   useEffect(() => {
-    fetch("http://127.0.0.1:5000/api/me", { credentials: "include" })
+    fetch(`${API_URL}/api/me`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         setUser(data);

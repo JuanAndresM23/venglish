@@ -14,7 +14,7 @@ const fetchEvents = async () => {
   try {
     // 1. Usamos la ruta completa y correcta
     // 2. Agregamos credentials: 'include' para que Flask sepa que eres Admin
-    const response = await fetch("http://localhost:5000/api/admin/dashboard", {
+    const response = await fetch(`${API_URL}/api/admin/dashboard`, {
       credentials: "include" 
     });
 
@@ -50,7 +50,7 @@ const fetchEvents = async () => {
 
     if (window.confirm(`¿Estás seguro de que deseas cancelar la clase: "${eventTitle}"?`)) {
         try {
-      const response = await fetch(`http://localhost:5000/delete_booking/${eventId}`, {
+      const response = await fetch(`${API_URL}/delete_booking/${eventId}`, {
     method: 'DELETE',
     credentials: 'include', 
     headers: {

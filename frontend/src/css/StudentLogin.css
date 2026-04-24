@@ -1,17 +1,3 @@
-:root {
-  --venglish-pink: #ff4bb0;
-  --venglish-orange: #ff9d5c;
-  --venglish-yellow: #ffdb58;
-  --venglish-black: #1a1a1a;
-  --venglish-gradient: linear-gradient(135deg, #ff4bb0 0%, #ffdb58 100%);
-  /* Fondo suave: rosa muy claro -> blanco -> amarillo muy claro */
-  --venglish-bg-gradient: linear-gradient(135deg, 
-    rgba(255, 75, 176, 0.1) 0%, 
-    rgba(255, 255, 255, 1) 50%, 
-    rgba(255, 219, 88, 0.1) 100%
-  );
-}
-
 /* Estilo para los inputs personalizados */
 .custom-mui-input {
   width: 100%;

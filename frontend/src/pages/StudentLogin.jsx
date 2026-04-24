@@ -3,47 +3,48 @@ import { Box, Button, Checkbox, Typography, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import "../css/StudentLogin.css";
+import API_URL from "../config"; // ← AGREGADO
 
 export default function StudentLogin({ setUser }) {
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(""); // ← AGREGADO
   const navigate = useNavigate();
 
- const handleLogin = async (e) => {
-  e.preventDefault();
-  const loginData = {
-    student_code: code,
-    password: password
-  };
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError(""); // ← Limpia el error anterior cada vez que intenta
+    const loginData = {
+      student_code: code,
+      password: password
+    };
 
-  try {
-    // 1. URL corregida a /api/student_login para coincidir con Python
-    const res = await fetch("http://localhost:5000/api/student_login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(loginData),
-      credentials: "include", // <--- VITAL PARA GUARDAR LA SESIÓN
-    });
-
-    if (res.ok) {
-      // 2. Si el login fue bien, pedimos los datos a /api/me
-      const userRes = await fetch("http://localhost:5000/api/me", {
+    try {
+      const res = await fetch(`${API_URL}/api/student_login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loginData),
         credentials: "include",
       });
-      const userData = await userRes.json();
-      
-      if (userData.is_logged_in) {
-        setUser(userData);
-        navigate("/dashboard");
+
+      if (res.ok) {
+        const userRes = await fetch(`${API_URL}/api/me`, {
+          credentials: "include",
+        });
+        const userData = await userRes.json();
+        
+        if (userData.is_logged_in) {
+          setUser(userData);
+          navigate("/dashboard");
+        }
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || "Código o contraseña incorrectos"); // ← CAMBIADO
       }
-    } else {
-      const errorData = await res.json();
-      alert(errorData.error || "Código o contraseña incorrectos");
+    } catch (error) {
+      setError("No se pudo conectar con el servidor. Intenta de nuevo."); // ← CAMBIADO
     }
-  } catch (error) {
-    console.error("Error de conexión:", error);
-  }
-};
+  };
 
   return (
     <Box
@@ -52,7 +53,7 @@ export default function StudentLogin({ setUser }) {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "var(--venglish-bg-gradient)", // Usa tu variable del index.css
+        background: "var(--venglish-bg-gradient)",
         p: 2,
       }}
     >
@@ -64,17 +65,17 @@ export default function StudentLogin({ setUser }) {
           borderRadius: "30px", 
           overflow: "hidden", 
           boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-          backgroundColor: "rgba(255, 255, 255, 0.4)", // Más sólido para legibilidad
+          backgroundColor: "rgba(255, 255, 255, 0.4)",
           backdropFilter: "blur(15px)",
           border: "1px solid rgba(255,255,255,0.5)",
         }}
       >
-        {/* LADO IZQUIERDO: BANNER (Vibrante) */}
+        {/* LADO IZQUIERDO: BANNER */}
         <Grid 
           item xs={0} md={6} 
           sx={{ 
             display: { xs: "none", md: "flex" },
-            background: "var(--venglish-gradient)", // Rosa a Amarillo
+            background: "var(--venglish-gradient)",
             flexDirection: "column",
             justifyContent: "center",
             alignItems: "center",
@@ -91,7 +92,7 @@ export default function StudentLogin({ setUser }) {
           </Box>
         </Grid>
 
-        {/* LADO DERECHO: FORMULARIO (Limpio) */}
+        {/* LADO DERECHO: FORMULARIO */}
         <Grid 
           item xs={12} md={6} 
           sx={{ 
@@ -115,7 +116,6 @@ export default function StudentLogin({ setUser }) {
                 <AccountCircleIcon sx={{ fontSize: 50, color: "var(--venglish-pink)" }} />
               </Box>
 
-              {/* Cambiamos color="white" por "textPrimary" para que se vea en el fondo claro */}
               <Typography color="textPrimary" fontWeight="bold" variant="h5" sx={{ mt: 3 }}>
                 Bienvenido a Venglish
               </Typography>
@@ -129,17 +129,33 @@ export default function StudentLogin({ setUser }) {
                 <input
                   type="text"
                   placeholder="Código de Estudiante"
-                  className="custom-mui-input" // Estilo del index.css
+                  className="custom-mui-input"
                   onChange={(e) => setCode(e.target.value)}
                   required
                 />
                 <input
                   type="password"
                   placeholder="Contraseña"
-                  className="custom-mui-input" // Estilo del index.css
+                  className="custom-mui-input"
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+
+                {/* ← AGREGADO: Mensaje de error visible */}
+                {error && (
+                  <Typography 
+                    variant="body2" 
+                    textAlign="center"
+                    sx={{ 
+                      color: "white",
+                      backgroundColor: "#e53935",
+                      borderRadius: "8px",
+                      padding: "10px"
+                    }}
+                  >
+                    ⚠️ {error}
+                  </Typography>
+                )}
 
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Box display="flex" alignItems="center">

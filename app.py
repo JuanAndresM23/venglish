@@ -34,6 +34,15 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=60)
 def make_session_permanent():
     session.permanent = True
 
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"message": "Sesión cerrada"}), 200
+
+
+
 # --- DECORADORES DE PROTECCIÓN ---
 def admin_required(f):
     @wraps(f)
@@ -47,7 +56,6 @@ def admin_required(f):
 
 @app.route("/api/me")
 def get_current_user():
-    # Depuración: esto imprimirá en tu consola de Flask qué hay dentro de la sesión
     print(f"Contenido de la sesión actual: {dict(session)}")
 
     # Caso Estudiante
@@ -64,16 +72,14 @@ def get_current_user():
         return jsonify({
             "is_logged_in": True, 
             "role": "admin",
-            "name": "Victoria" 
+            "name": "Victoria",
+            "level": session.get("role_level", 0)  # ← única línea nueva
         }), 200
     
     # Caso No logueado
     return jsonify({"is_logged_in": False, "role": None}), 401
 
-@app.route("/api/logout")
-def logout():
-    session.clear()
-    return jsonify({"message": "Sesión cerrada correctamente"})
+
 
 # --- RUTAS DE ESTUDIANTES ---
 

@@ -19,7 +19,7 @@ export default function AdminLogin({ setUser }) {
     e.preventDefault();
     
     try {
-      const loginRes = await fetch("http://localhost:5000/api/admin_login", {
+      const loginRes = await fetch(`${API_URL}/api/admin_login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -49,7 +49,7 @@ export default function AdminLogin({ setUser }) {
 
           // 3. Guardamos en el estado global y en localStorage para el Navbar
           setUser(completeUser);
-          localStorage.setItem("role_level", loginData.role_level.toString());
+          
           
           navigate("/dashboard", { replace: true });
         } else {

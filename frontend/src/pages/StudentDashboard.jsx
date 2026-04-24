@@ -8,7 +8,7 @@ export default function StudentDashboard() {
     useEffect(() => {
         // 1. Usamos localhost para consistencia
         // 2. Agregamos credentials: "include" para que Flask lea la sesión
-        fetch("http://localhost:5000/api/my_classes", {
+        fetch(`${API_URL}/api/my_classes`, {
             credentials: "include" 
         })
         .then(res => {

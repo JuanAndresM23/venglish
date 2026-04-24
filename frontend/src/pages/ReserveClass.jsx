@@ -10,41 +10,54 @@ import {
   InputLabel,
   FormControl,
   TextField,
+  Alert
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import SchoolIcon from "@mui/icons-material/School"; // Icono para profesores
+import SchoolIcon from "@mui/icons-material/School";
 import "../css/index.css";
+import API_URL from "../config"; // ← AGREGADO
 
 export default function ReserveClass() {
   const [courses, setCourses] = useState([]);
-  const [teachers, setTeachers] = useState([]); // Nuevo estado para profes
+  const [teachers, setTeachers] = useState([]);
   const [form, setForm] = useState({ 
     course_id: "", 
-    teacher_id: "", // Nuevo campo en el form
+    teacher_id: "",
     date: "", 
     time: "" 
   });
+  const [error, setError] = useState("");     // ← AGREGADO
+  const [success, setSuccess] = useState(""); // ← AGREGADO
   const navigate = useNavigate();
 
   useEffect(() => {
     // 1. Cargar Cursos
-    fetch("http://localhost:5000/api/reserve", { credentials: "include" })
-      .then((res) => res.json())
+    fetch(`${API_URL}/api/reserve`, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Error cargando cursos");
+        return res.json();
+      })
       .then((data) => setCourses(Array.isArray(data) ? data : []))
-      .catch((err) => console.error("Error cargando cursos:", err));
+      .catch((err) => setError("No se pudieron cargar los cursos. Intenta recargar.")); // ← CAMBIADO
 
-    // 2. Cargar Profesores (Debes crear esta ruta en Flask como te mostré antes)
-    fetch("http://localhost:5000/api/teachers")
-      .then((res) => res.json())
+    // 2. Cargar Profesores
+    fetch(`${API_URL}/api/teachers`, { credentials: "include" }) // ← AGREGADO credentials
+      .then((res) => {
+        if (!res.ok) throw new Error("Error cargando profesores");
+        return res.json();
+      })
       .then((data) => setTeachers(Array.isArray(data) ? data : []))
-      .catch((err) => console.error("Error cargando profesores:", err));
+      .catch((err) => setError("No se pudieron cargar los profesores. Intenta recargar.")); // ← CAMBIADO
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
+
     try {
-      const res = await fetch("http://localhost:5000/api/reserve", {
+      const res = await fetch(`${API_URL}/api/reserve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -53,14 +66,13 @@ export default function ReserveClass() {
 
       const data = await res.json();
       if (res.ok) {
-        alert("¡Clase reservada con éxito! 🎉");
-        navigate("/dashboard");
+        setSuccess("¡Clase reservada con éxito! 🎉 Redirigiendo..."); // ← CAMBIADO
+        setTimeout(() => navigate("/dashboard"), 2000);               // ← Redirige a los 2 segundos
       } else {
-        alert(data.error || "Error al reservar");
+        setError(data.error || "Error al reservar. Intenta de nuevo."); // ← CAMBIADO
       }
     } catch (err) {
-      console.error("Error:", err);
-      alert("Hubo un fallo de conexión.");
+      setError("Hubo un fallo de conexión. Intenta de nuevo."); // ← CAMBIADO
     }
   };
 
@@ -73,6 +85,18 @@ export default function ReserveClass() {
           <Typography variant="h5" fontWeight="bold" color="textPrimary">Agendar Nueva Clase</Typography>
           <Typography variant="body2" color="textSecondary">Elige curso, profesor y horario</Typography>
         </Box>
+
+        {/* ← AGREGADO: Mensajes de error y éxito */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+            ⚠️ {error}
+          </Alert>
+        )}
+        {success && (
+          <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
+            {success}
+          </Alert>
+        )}
 
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
@@ -96,7 +120,7 @@ export default function ReserveClass() {
               </FormControl>
             </Grid>
 
-            {/* NUEVO: Selector de Profesor */}
+            {/* Selector de Profesor */}
             <Grid item xs={12}>
               <FormControl fullWidth variant="outlined">
                 <InputLabel id="teacher-label">Selecciona tu Profesor</InputLabel>
