@@ -4,6 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction'; // Necesario para clics y arrastre
 import esLocale from '@fullcalendar/core/locales/es'; // Para ponerlo en español
 import '../css/AdminDashboard.css';
+import API_URL from "../config";
 
 export default function AdminDashboard() {
   const [events, setEvents] = useState([]);

@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 import "../css/StudentLogin.css";
+import API_URL from "../config";
 
 export default function AdminLogin({ setUser }) {
   const [username, setUsername] = useState("");

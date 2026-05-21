@@ -3,6 +3,7 @@ import { Box, Typography, Button, TextField, Paper } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import "../css/index.css";
+import API_URL from "../config";
 
 export default function AddStudent() {
   const [formData, setFormData] = useState({ 

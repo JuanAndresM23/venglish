@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button } from "@mui/material";
-
+import API_URL from "../config"; 
 export default function StudentDashboard() {
     const [classes, setClasses] = useState([]);
 
