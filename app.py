@@ -29,10 +29,10 @@ CORS(app,
      allow_headers=["Content-Type", "Authorization"])
 
 app.config.update(
-    SESSION_COOKIE_SAMESITE='Lax', 
-    SESSION_COOKIE_SECURE=False,   
+    SESSION_COOKIE_SAMESITE='None',  # ← CAMBIADO
+    SESSION_COOKIE_SECURE=True,      # ← CAMBIADO
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_DOMAIN=None,    # Importante: No restrinjas el dominio
+    SESSION_COOKIE_DOMAIN=None,
     USE_X_FORWARDED_HOST=True,
     SESSION_PERMANENT=True
 )
