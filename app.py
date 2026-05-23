@@ -19,7 +19,12 @@ app.secret_key = "Parkour2311"
 # Agregamos 'methods' para que el navegador no bloquee el DELETE
 CORS(app, 
      supports_credentials=True, 
-     origins=["http://localhost:5173"],
+     origins=[
+         "http://localhost:5173",
+         "https://venglishacademy.lat",
+         "https://www.venglishacademy.lat",
+         "https://venglish.vercel.app"
+     ],
      methods=["GET", "POST", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"])
 
