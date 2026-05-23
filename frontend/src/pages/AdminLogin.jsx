@@ -1,23 +1,19 @@
-
-
 import React, { useState } from "react";
-
 import { Box, Button, Typography, Grid } from "@mui/material";
-
 import { useNavigate } from "react-router-dom";
-
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-
 import "../css/StudentLogin.css";
 import API_URL from "../config";
 
 export default function AdminLogin({ setUser }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
     
     try {
       const loginRes = await fetch(`${API_URL}/api/admin_login`, {
@@ -28,44 +24,33 @@ export default function AdminLogin({ setUser }) {
       });
 
       if (loginRes.ok) {
-        // 1. Obtenemos los datos del login (donde ahora enviamos el role_level)
         const loginData = await loginRes.json();
         
-        console.log("1. Login exitoso. Verificando sesión...");
-        
-        const userRes = await fetch("http://localhost:5000/api/me", { 
+        const userRes = await fetch(`${API_URL}/api/me`, { // ← CORREGIDO
           credentials: "include" 
         });
         
         const userData = await userRes.json();
         
         if (userData.is_logged_in && userData.role === 'admin') {
-          console.log("2. Admin confirmado:", userData.name);
-          
-          // 2. Combinamos la info de sesión con el nivel de rol que vino del login
           const completeUser = {
             ...userData,
-            level: loginData.role_level // Agregamos el nivel (1 o 0)
+            level: loginData.role_level
           };
-
-          // 3. Guardamos en el estado global y en localStorage para el Navbar
           setUser(completeUser);
-          
-          
           navigate("/dashboard", { replace: true });
         } else {
-          alert("Error de sesión: El servidor no reconoció el login.");
+          setError("Error de sesión: El servidor no reconoció el login.");
         }
       } else {
         const errorData = await loginRes.json();
-        alert(errorData.error || "Credenciales incorrectas");
+        setError(errorData.error || "Credenciales incorrectas");
       }
     } catch (err) {
       console.error("Error crítico:", err);
-      alert("No se pudo conectar con el servidor.");
+      setError("No se pudo conectar con el servidor.");
     }
   };
-
 
   return (
     <Box
@@ -74,7 +59,7 @@ export default function AdminLogin({ setUser }) {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "linear-gradient(135deg, #2c3e50 0%, #000000 100%)", // Fondo más oscuro para Admin
+        background: "linear-gradient(135deg, #2c3e50 0%, #000000 100%)",
         p: 2,
       }}
     >
@@ -92,13 +77,13 @@ export default function AdminLogin({ setUser }) {
         }}
       >
         
-        {/* LADO IZQUIERDO: DECORATIVO */}
+        {/* LADO IZQUIERDO */}
         <Grid 
           item 
           xs={0} md={6} 
           sx={{ 
             display: { xs: "none", md: "flex" },
-            background: "linear-gradient(135deg, #ff61d2 0%, #fe9090 100%)", // Colores Venglish
+            background: "linear-gradient(135deg, #ff61d2 0%, #fe9090 100%)",
             flexDirection: "column",
             justifyContent: "center",
             alignItems: "center",
@@ -115,7 +100,7 @@ export default function AdminLogin({ setUser }) {
           </Box>
         </Grid>
 
-        {/* LADO DERECHO: FORMULARIO */}
+        {/* LADO DERECHO */}
         <Grid 
           item 
           xs={12} md={6} 
@@ -170,6 +155,22 @@ export default function AdminLogin({ setUser }) {
                   required
                 />
 
+                {/* Mensaje de error */}
+                {error && (
+                  <Typography
+                    variant="body2"
+                    textAlign="center"
+                    sx={{
+                      color: "white",
+                      backgroundColor: "#c62828",
+                      borderRadius: "8px",
+                      padding: "10px"
+                    }}
+                  >
+                    ⚠️ {error}
+                  </Typography>
+                )}
+
                 <Button
                   type="submit"
                   variant="contained"
@@ -186,13 +187,12 @@ export default function AdminLogin({ setUser }) {
                     "&:hover": { backgroundColor: "#1a1a1a", borderColor: "#ff4bb0" },
                   }}
                 >
-                  INICIAR SECCION
+                  INICIAR SESIÓN
                 </Button>
               </Box>
             </form>
           </Box>
         </Grid>
-
       </Grid>
     </Box>
   );
