@@ -7,6 +7,7 @@ from datetime import timedelta
 from flask import session
 from datetime import datetime, timedelta
 import psycopg2
+import os
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -491,6 +492,6 @@ def get_teachers():
     finally:
         cur.close()
         conn.close()
-
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
