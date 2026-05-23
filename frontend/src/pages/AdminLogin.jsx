@@ -25,18 +25,13 @@ export default function AdminLogin({ setUser }) {
 
       if (loginRes.ok) {
         const loginData = await loginRes.json();
-        
-        const userRes = await fetch(`${API_URL}/api/me`, { // ← CORREGIDO
+        const userRes = await fetch(`${API_URL}/api/me`, { 
           credentials: "include" 
         });
-        
         const userData = await userRes.json();
         
         if (userData.is_logged_in && userData.role === 'admin') {
-          const completeUser = {
-            ...userData,
-            level: loginData.role_level
-          };
+          const completeUser = { ...userData, level: loginData.role_level };
           setUser(completeUser);
           navigate("/dashboard", { replace: true });
         } else {
@@ -47,7 +42,6 @@ export default function AdminLogin({ setUser }) {
         setError(errorData.error || "Credenciales incorrectas");
       }
     } catch (err) {
-      console.error("Error crítico:", err);
       setError("No se pudo conectar con el servidor.");
     }
   };
@@ -71,16 +65,14 @@ export default function AdminLogin({ setUser }) {
           borderRadius: "30px", 
           overflow: "hidden", 
           boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
-          backgroundColor: "rgba(255, 255, 255, 0.05)",
+          backgroundColor: "rgba(255,255,255,0.05)",
           backdropFilter: "blur(20px)",
           border: "1px solid rgba(255,255,255,0.1)",
         }}
       >
-        
         {/* LADO IZQUIERDO */}
         <Grid 
-          item 
-          xs={0} md={6} 
+          item xs={0} md={6} 
           sx={{ 
             display: { xs: "none", md: "flex" },
             background: "linear-gradient(135deg, #ff61d2 0%, #fe9090 100%)",
@@ -90,7 +82,7 @@ export default function AdminLogin({ setUser }) {
             p: 4,
           }}
         >
-          <Box sx={{ textAlign: "center", color: "white" }}>
+          <Box sx={{ color: "white", textAlign: "center" }}>
             <Typography variant="h3" fontWeight="bold" mb={2}>
               Admin Panel
             </Typography>
@@ -102,47 +94,47 @@ export default function AdminLogin({ setUser }) {
 
         {/* LADO DERECHO */}
         <Grid 
-          item 
-          xs={12} md={6} 
+          item xs={12} md={6} 
           sx={{ 
             p: { xs: 4, md: 8 }, 
             display: "flex", 
             flexDirection: "column", 
-            justifyContent: "center" 
+            justifyContent: "center",
+            backgroundColor: "#1a1a2e"
           }}
         >
           <Box width="100%">
             <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
               <Box
                 sx={{
-                  width: "80px",
-                  height: "80px",
-                  borderRadius: "50%",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
+                  width: "80px", height: "80px", borderRadius: "50%",
+                  display: "flex", justifyContent: "center", alignItems: "center",
                   backgroundColor: "rgba(255,255,255,0.1)",
                   border: "2px solid #ff61d2"
                 }}
               >
-                <AdminPanelSettingsIcon sx={{ fontSize: 50, color: "white" }} />
+                <AdminPanelSettingsIcon sx={{ fontSize: 50, color: "#ff61d2" }} />
               </Box>
 
               <Typography color="white" fontWeight="bold" variant="h5" sx={{ mt: 3 }}>
                 Hola, Maestro
               </Typography>
-              <Typography color="white" sx={{ opacity: 0.6 }}>
+              <Typography sx={{ color: "rgba(255,255,255,0.6)" }}>
                 Ingresa tus credenciales de administradora
               </Typography>
             </Box>
 
             <form onSubmit={handleLogin}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <input
                   type="text"
                   placeholder="Usuario"
                   className="custom-mui-input"
-                  style={{ backgroundColor: "rgba(255,255,255,0.05)", color: "white" }}
+                  style={{ 
+                    backgroundColor: "rgba(255,255,255,0.05)", 
+                    color: "white",
+                    borderColor: "rgba(255,255,255,0.2)"
+                  }}
                   onChange={(e) => setUsername(e.target.value)}
                   required
                 />
@@ -150,12 +142,15 @@ export default function AdminLogin({ setUser }) {
                   type="password"
                   placeholder="Contraseña"
                   className="custom-mui-input"
-                  style={{ backgroundColor: "rgba(255,255,255,0.05)", color: "white" }}
+                  style={{ 
+                    backgroundColor: "rgba(255,255,255,0.05)", 
+                    color: "white",
+                    borderColor: "rgba(255,255,255,0.2)"
+                  }}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
 
-                {/* Mensaje de error */}
                 {error && (
                   <Typography
                     variant="body2"
@@ -177,14 +172,12 @@ export default function AdminLogin({ setUser }) {
                   fullWidth
                   sx={{
                     mt: 2,
-                    py: 2,
+                    py: 1.5,
                     borderRadius: "12px",
-                    backgroundColor: "#000",
-                    border: "1px solid #ff61d2",
-                    color: "white",
+                    background: "linear-gradient(135deg, #ff61d2 0%, #fe9090 100%)",
                     fontWeight: "bold",
                     letterSpacing: "1px",
-                    "&:hover": { backgroundColor: "#1a1a1a", borderColor: "#ff4bb0" },
+                    "&:hover": { opacity: 0.9 },
                   }}
                 >
                   INICIAR SESIÓN
