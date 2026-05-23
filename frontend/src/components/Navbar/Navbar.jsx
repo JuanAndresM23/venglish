@@ -29,7 +29,7 @@ export default function Navbar({ user, setUser }) {
       <div className="logo-container">
         <Link to="/" onClick={() => setIsOpen(false)}>
           <img
-            src="/src/assets/venglish.jpeg"
+           src="/venglish.jpeg"
             alt="Venglish Logo"
             className="nav-logo"
           />
