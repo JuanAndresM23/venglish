@@ -1,10 +1,15 @@
 import psycopg2
-#conexion a base de datos
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 def get_connection():
     connection = psycopg2.connect(
-        host="localhost",
-        database="sistema_reservas",
-        user="postgres",
-        password="123456"
+        host=os.environ.get("DB_HOST"),
+        database=os.environ.get("DB_NAME"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD"),
+        port=os.environ.get("DB_PORT", "5432")
     )
     return connection

@@ -8,6 +8,9 @@ from flask import session
 from datetime import datetime, timedelta
 import psycopg2
 
+from dotenv import load_dotenv
+load_dotenv()
+
 app = Flask(__name__)
 app.secret_key = "Parkour2311"
 
