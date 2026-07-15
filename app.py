@@ -6,12 +6,51 @@ from flask_cors import CORS
 from datetime import timedelta
 from flask import session
 from datetime import datetime, timedelta
+import json
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 import psycopg2
 import os
 
 from dotenv import load_dotenv
 load_dotenv()
+ 
+def get_calendar_service():
+    credentials_json = os.environ.get("GOOGLE_CREDENTIALS")
+    credentials_dict = json.loads(credentials_json)
+    credentials = service_account.Credentials.from_service_account_info(
+        credentials_dict,
+        scopes=["https://www.googleapis.com/auth/calendar"]
+    )
+    return build("calendar", "v3", credentials=credentials)
 
+def create_calendar_event(teacher_email, student_name, course_name, date_str, time_str):
+    try:
+        service = get_calendar_service()
+        start_datetime = f"{date_str}T{time_str}:00"
+        end_time = (datetime.strptime(time_str, "%H:%M") + timedelta(hours=1)).strftime("%H:%M")
+        end_datetime = f"{date_str}T{end_time}:00"
+
+        event = {
+            "summary": f"Clase de {course_name} - {student_name}",
+            "description": f"Clase agendada con {student_name} en Venglish Academy",
+            "start": {"dateTime": start_datetime, "timeZone": "America/Bogota"},
+            "end": {"dateTime": end_datetime, "timeZone": "America/Bogota"},
+        }
+
+        event = service.events().insert(
+            calendarId=teacher_email,
+            body=event,
+            sendUpdates="all"
+        ).execute()
+
+        print(f"Evento creado: {event.get('htmlLink')}")
+        return event.get("id")
+
+    except Exception as e:
+        print(f"Error creando evento en Calendar: {e}")
+        return None
+    
 app = Flask(__name__)
 app.secret_key = "Parkour2311"
 
@@ -226,7 +265,7 @@ def post_reserve():
         
     data = request.json
     course_id = data.get('course_id')
-    teacher_id = data.get('teacher_id') # <--- RECIBIMOS EL PROFESOR SELECCIONADO
+    teacher_id = data.get('teacher_id')
     date_str = data.get('date')
     time_str = data.get('time')
 
@@ -241,7 +280,7 @@ def post_reserve():
     cur = conn.cursor()
 
     try:
-        # REGLA 1: ¿El estudiante ya tiene otra clase a esa hora (con cualquier profe)?
+        # REGLA 1: ¿El estudiante ya tiene otra clase a esa hora?
         cur.execute("""
             SELECT id FROM bookings 
             WHERE student_id = %s AND class_date = %s 
@@ -251,8 +290,7 @@ def post_reserve():
         if cur.fetchone():
             return jsonify({"error": "Ya tienes una clase registrada en este horario"}), 400
 
-        # REGLA 2: ¿EL PROFESOR SELECCIONADO ya está ocupado a esa hora?
-        # Ahora filtramos por teacher_id para que otros profes sí puedan estar libres
+        # REGLA 2: ¿El profesor ya está ocupado a esa hora?
         cur.execute("""
             SELECT id FROM bookings 
             WHERE teacher_id = %s AND class_date = %s 
@@ -262,13 +300,36 @@ def post_reserve():
         if cur.fetchone():
             return jsonify({"error": "Este profesor ya tiene una clase asignada en este horario"}), 400
 
-        # GUARDAR RESERVA INCLUYENDO EL PROFESOR
+        # GUARDAR RESERVA
         cur.execute("""
             INSERT INTO bookings (course_id, student_id, teacher_id, class_date, class_time)
             VALUES (%s, %s, %s, %s, %s)
         """, (course_id, student_id, teacher_id, date_str, time_str))
         
         conn.commit()
+
+        # ← GOOGLE CALENDAR: Crear evento después de guardar
+        try:
+            cur.execute("SELECT email FROM admins WHERE id = %s", (teacher_id,))
+            teacher = cur.fetchone()
+            
+            cur.execute("SELECT name FROM students WHERE id = %s", (student_id,))
+            student = cur.fetchone()
+            
+            cur.execute("SELECT course_name FROM courses WHERE id = %s", (course_id,))
+            course = cur.fetchone()
+            
+            if teacher and teacher[0]:
+                create_calendar_event(
+                    teacher_email=teacher[0],
+                    student_name=student[0] if student else "Estudiante",
+                    course_name=course[0] if course else "Clase",
+                    date_str=date_str,
+                    time_str=time_str
+                )
+        except Exception as e:
+            print(f"Error al crear evento en Calendar: {e}")
+
         return jsonify({"message": "Reserva confirmada"}), 201
 
     except Exception as e:
