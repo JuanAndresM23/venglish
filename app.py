@@ -3,9 +3,8 @@ from database import get_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from flask_cors import CORS
-from datetime import timedelta
-from flask import session
 from datetime import datetime, timedelta
+from flask import session
 import json
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -14,7 +13,10 @@ import os
 
 from dotenv import load_dotenv
 load_dotenv()
- 
+
+# ============================================================
+# GOOGLE CALENDAR
+# ============================================================
 def get_calendar_service():
     credentials_json = os.environ.get("GOOGLE_CREDENTIALS")
     credentials_dict = json.loads(credentials_json)
@@ -24,18 +26,31 @@ def get_calendar_service():
     )
     return build("calendar", "v3", credentials=credentials)
 
-def create_calendar_event(teacher_email, student_name, course_name, date_str, time_str):
+def create_calendar_event(teacher_email, student_email, student_name, course_name, date_str, time_str):
     try:
         service = get_calendar_service()
         start_datetime = f"{date_str}T{time_str}:00"
         end_time = (datetime.strptime(time_str, "%H:%M") + timedelta(hours=1)).strftime("%H:%M")
         end_datetime = f"{date_str}T{end_time}:00"
 
+        attendees = [{"email": teacher_email}]
+        if student_email:
+            attendees.append({"email": student_email})
+
         event = {
             "summary": f"Clase de {course_name} - {student_name}",
             "description": f"Clase agendada con {student_name} en Venglish Academy",
             "start": {"dateTime": start_datetime, "timeZone": "America/Bogota"},
             "end": {"dateTime": end_datetime, "timeZone": "America/Bogota"},
+            "attendees": attendees,
+            "reminders": {
+                "useDefault": False,
+                "overrides": [
+                    {"method": "email", "minutes": 1440},  # 24 horas antes
+                    {"method": "email", "minutes": 60},    # 1 hora antes
+                    {"method": "popup", "minutes": 30}     # 30 min antes
+                ]
+            }
         }
 
         event = service.events().insert(
@@ -50,12 +65,24 @@ def create_calendar_event(teacher_email, student_name, course_name, date_str, ti
     except Exception as e:
         print(f"Error creando evento en Calendar: {e}")
         return None
-    
+
+def delete_calendar_event(teacher_email, event_id):
+    try:
+        service = get_calendar_service()
+        service.events().delete(
+            calendarId=teacher_email,
+            eventId=event_id,
+            sendUpdates="all"
+        ).execute()
+        print(f"Evento {event_id} eliminado de Calendar")
+        return True
+    except Exception as e:
+        print(f"Error eliminando evento de Calendar: {e}")
+        return False
+
 app = Flask(__name__)
 app.secret_key = "Parkour2311"
 
-# --- CONFIGURACIÓN DE SEGURIDAD ---
-# Agregamos 'methods' para que el navegador no bloquee el DELETE
 CORS(app, 
      supports_credentials=True, 
      origins=[
@@ -68,30 +95,24 @@ CORS(app,
      allow_headers=["Content-Type", "Authorization"])
 
 app.config.update(
-    SESSION_COOKIE_SAMESITE='None',  # ← CAMBIADO
-    SESSION_COOKIE_SECURE=True,      # ← CAMBIADO
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_DOMAIN=None,
     USE_X_FORWARDED_HOST=True,
     SESSION_PERMANENT=True
 )
-# Configuración de sesión (1 hora de duración)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=60)
 
 @app.before_request
 def make_session_permanent():
     session.permanent = True
 
-
-
 @app.route("/api/logout", methods=["POST"])
 def logout():
     session.clear()
     return jsonify({"message": "Sesión cerrada"}), 200
 
-
-
-# --- DECORADORES DE PROTECCIÓN ---
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -100,13 +121,10 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- RUTAS DE IDENTIDAD (AUTH) ---
-
 @app.route("/api/me")
 def get_current_user():
     print(f"Contenido de la sesión actual: {dict(session)}")
 
-    # Caso Estudiante
     if session.get("role") == "student" or "student_id" in session:
         return jsonify({
             "is_logged_in": True, 
@@ -115,21 +133,15 @@ def get_current_user():
             "name": session.get("student_name")
         }), 200
     
-    # Caso Admin
     elif session.get("role") == "admin" or "admin" in session:
         return jsonify({
             "is_logged_in": True, 
             "role": "admin",
             "name": "Victoria",
-            "level": session.get("role_level", 0)  # ← única línea nueva
+            "level": session.get("role_level", 0)
         }), 200
     
-    # Caso No logueado
     return jsonify({"is_logged_in": False, "role": None}), 401
-
-
-
-# --- RUTAS DE ESTUDIANTES ---
 
 @app.route("/api/student_login", methods=["POST"])
 def student_login():
@@ -144,7 +156,7 @@ def student_login():
     if student and check_password_hash(student[2], data.get('password')):
         session["student_id"] = student[0]
         session["student_name"] = student[1]
-        session["role"] = "student"  # <--- ESTO ES VITAL PARA api/me
+        session["role"] = "student"
         return jsonify({"message": "Login exitoso"}), 200
         
     return jsonify({"error": "Código o contraseña incorrectos"}), 401
@@ -161,19 +173,16 @@ def student_register():
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Buscamos si el código existe
     cursor.execute("SELECT id, password FROM students WHERE student_code=%s", (student_code,))
     student = cursor.fetchone()
 
     if not student:
         return jsonify({"error": "Este código no existe en el sistema."}), 404
     
-    # Si ya tiene password, es que ya se registró antes
     if student[1]:
         return jsonify({"error": "Este código ya fue utilizado para crear una cuenta."}), 400
 
     try:
-        # Solo actualizamos la contraseña. Nombre y correo ya los puso Victoria.
         hashed_pw = generate_password_hash(new_password)
         cursor.execute(
             "UPDATE students SET password=%s WHERE student_code=%s",
@@ -186,28 +195,41 @@ def student_register():
     finally:
         cursor.close()
         conn.close()
-        
 
 @app.route("/delete_booking/<int:booking_id>", methods=['DELETE', 'OPTIONS'])
 def delete_booking(booking_id):
-    # 1. Si es OPTIONS, respondemos OK de inmediato para el navegador
     if request.method == 'OPTIONS':
         return jsonify({"message": "ok"}), 200
 
-    # 2. Ahora sí, verificamos si es admin manualmente
     if not session.get("admin"):
         return jsonify({"error": "Acceso de administrador requerido"}), 401
 
-    # 3. Lógica de eliminación (tu código actual)
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id FROM bookings WHERE id = %s", (booking_id,))
-        if not cursor.fetchone():
+        # Obtener datos antes de eliminar
+        cursor.execute("""
+            SELECT b.calendar_event_id, a.email 
+            FROM bookings b
+            JOIN admins a ON b.teacher_id = a.id
+            WHERE b.id = %s
+        """, (booking_id,))
+        booking = cursor.fetchone()
+
+        if not booking:
             return jsonify({"error": "La reserva no existe"}), 404
 
+        # Eliminar de la BD
         cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
         conn.commit()
+
+        # Eliminar de Google Calendar
+        calendar_event_id = booking[0]
+        teacher_email = booking[1]
+        
+        if calendar_event_id and teacher_email:
+            delete_calendar_event(teacher_email, calendar_event_id)
+
         return jsonify({"message": "Reserva eliminada con éxito"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -258,7 +280,6 @@ def post_reserve():
             cur.close()
             conn.close()
 
-    # --- LÓGICA PARA GUARDAR (POST) ---
     student_id = session.get("student_id")
     if not student_id:
         return jsonify({"error": "No autorizado"}), 401
@@ -280,7 +301,6 @@ def post_reserve():
     cur = conn.cursor()
 
     try:
-        # REGLA 1: ¿El estudiante ya tiene otra clase a esa hora?
         cur.execute("""
             SELECT id FROM bookings 
             WHERE student_id = %s AND class_date = %s 
@@ -290,7 +310,6 @@ def post_reserve():
         if cur.fetchone():
             return jsonify({"error": "Ya tienes una clase registrada en este horario"}), 400
 
-        # REGLA 2: ¿El profesor ya está ocupado a esa hora?
         cur.execute("""
             SELECT id FROM bookings 
             WHERE teacher_id = %s AND class_date = %s 
@@ -304,29 +323,39 @@ def post_reserve():
         cur.execute("""
             INSERT INTO bookings (course_id, student_id, teacher_id, class_date, class_time)
             VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
         """, (course_id, student_id, teacher_id, date_str, time_str))
         
+        booking_id = cur.fetchone()[0]
         conn.commit()
 
-        # ← GOOGLE CALENDAR: Crear evento después de guardar
+        # GOOGLE CALENDAR
         try:
             cur.execute("SELECT email FROM admins WHERE id = %s", (teacher_id,))
             teacher = cur.fetchone()
             
-            cur.execute("SELECT name FROM students WHERE id = %s", (student_id,))
+            cur.execute("SELECT name, email FROM students WHERE id = %s", (student_id,))
             student = cur.fetchone()
             
             cur.execute("SELECT course_name FROM courses WHERE id = %s", (course_id,))
             course = cur.fetchone()
             
             if teacher and teacher[0]:
-                create_calendar_event(
+                event_id = create_calendar_event(
                     teacher_email=teacher[0],
+                    student_email=student[1] if student and student[1] else None,
                     student_name=student[0] if student else "Estudiante",
                     course_name=course[0] if course else "Clase",
                     date_str=date_str,
                     time_str=time_str
                 )
+                
+                if event_id:
+                    cur.execute("""
+                        UPDATE bookings SET calendar_event_id = %s WHERE id = %s
+                    """, (event_id, booking_id))
+                    conn.commit()
+                    
         except Exception as e:
             print(f"Error al crear evento en Calendar: {e}")
 
@@ -338,7 +367,6 @@ def post_reserve():
     finally:
         cur.close()
         conn.close()
-# --- RUTAS DE ADMINISTRADOR (VICTORIA) ---
 
 @app.route("/api/admin_login", methods=["POST"])
 def admin_login():
@@ -351,32 +379,27 @@ def admin_login():
         return jsonify({"error": "Error de conexión a la base de datos"}), 500
 
     cur = conn.cursor()
-    # 1. Agregamos role_level a la consulta SQL
     cur.execute("SELECT id, username, password, role_level FROM admins WHERE username = %s", (username,))
     admin = cur.fetchone()
-
     cur.close()
     conn.close()
 
-    # admin[0]=id, admin[1]=username, admin[2]=password, admin[3]=role_level
     if admin and check_password_hash(admin[2], password):
         session.clear()
         session.permanent = True
         session["admin"] = True
         session["role"] = "admin"
         session["user_id"] = admin[0]
-        session["role_level"] = admin[3] # Guardamos en sesión por seguridad
+        session["role_level"] = admin[3]
 
-        # 2. Retornamos el role_level y el username al frontend
         return jsonify({
             "message": f"Bienvenido/a {admin[1]}",
             "role": "admin",
             "username": admin[1],
-            "role_level": admin[3] # <--- Esto es lo que activará el botón en el Navbar
+            "role_level": admin[3]
         }), 200
     
     return jsonify({"error": "Credenciales inválidas"}), 401
-
 
 @app.route("/api/admin/dashboard")
 @admin_required
@@ -387,7 +410,6 @@ def admin_dashboard_data():
     cur = conn.cursor()
     
     try:
-        # 1. Ver el nivel del admin logueado
         cur.execute("SELECT role_level FROM admins WHERE id = %s", (current_admin_id,))
         admin_data = cur.fetchone()
         
@@ -396,8 +418,6 @@ def admin_dashboard_data():
             
         role_level = admin_data[0]
 
-        # 2. Query base con los JOINs necesarios
-        # Traemos: ID reserva, Nombre Estudiante, Nombre Curso, Fecha, Hora y Nombre Profesor
         query = """
             SELECT b.id, s.name, c.course_name, b.class_date, b.class_time, a.username
             FROM bookings b
@@ -406,33 +426,26 @@ def admin_dashboard_data():
             JOIN admins a ON b.teacher_id = a.id
         """
 
-        # 3. Aplicar el filtro de "Aislamiento"
         if role_level == 1:
-            # Victoria (SuperAdmin): Ve todo
             cur.execute(query)
         else:
-            # Profesores (Andrés, Juan, etc.): Solo ven sus clases
             query += " WHERE b.teacher_id = %s"
             cur.execute(query, (current_admin_id,))
 
         rows = cur.fetchall()
 
-        # 4. Transformar los resultados al formato de FullCalendar
         events = []
         for r in rows:
-            # Formateamos el título para que Victoria vea quién da la clase
-            # Ejemplo: "Juan Ochoa (Prof. Andrés)"
             display_title = f"{r[1]} ({r[5]})" if role_level == 1 else r[1]
             
             events.append({
                 "id": str(r[0]),
                 "title": display_title,
-                "start": f"{r[3]}T{r[4]}", # Formato ISO: YYYY-MM-DDTHH:MM:SS
+                "start": f"{r[3]}T{r[4]}",
                 "extendedProps": {
                     "course": r[2],
                     "teacher": r[5]
                 },
-                # Color opcional: Victoria ve todo azul, profes ven otro color
                 "color": "#1976d2" if role_level == 1 else "#e91e63"
             })
 
@@ -445,32 +458,26 @@ def admin_dashboard_data():
         cur.close()
         conn.close()
 
-        
 @app.route("/api/list_students", methods=['GET', 'OPTIONS'])
 def api_list_students():
     if request.method == 'OPTIONS':
         return jsonify({"ok": True}), 200
 
-    # 1. Verificación de sesión básica
     if not session.get("admin"):
         return jsonify({"error": "Acceso de administrador requerido"}), 401
 
-    # 2. Obtener el ID del admin de la sesión para verificar su rango
     current_admin_id = session.get("user_id")
     
     conn = get_connection()
     cursor = conn.cursor()
     
     try:
-        # 3. Verificamos si el admin es SuperAdmin (role_level 1)
         cursor.execute("SELECT role_level FROM admins WHERE id = %s", (current_admin_id,))
         admin_data = cursor.fetchone()
         
-        # Si no existe o su nivel no es 1 (Victoria), bloqueamos el acceso
         if not admin_data or admin_data[0] != 1:
             return jsonify({"error": "Acceso restringido: Solo la dirección puede ver esta lista"}), 403
 
-        # 4. Si pasó la validación, traemos los estudiantes
         cursor.execute("SELECT id, name, phone, email, student_code FROM students ORDER BY id ASC")
         rows = cursor.fetchall()
         
@@ -495,9 +502,6 @@ def api_list_students():
 @admin_required
 def api_add_student():
     data = request.json
-    
-    # Usamos .get() con un valor por defecto (None o "") 
-    # para que no explote si Victoria deja el teléfono en blanco
     name = data.get('name')
     phone = data.get('phone', '')
     email = data.get('email', '')
@@ -516,13 +520,11 @@ def api_add_student():
         conn.commit()
         return jsonify({"message": "Estudiante pre-registrado correctamente"}), 201
     except Exception as e:
-        # Imprime el error real en tu consola de Flask para que tú sepas qué pasó
         print(f"Error en DB: {e}") 
         return jsonify({"error": "El Código o Email ya están registrados"}), 400
     finally:
         cursor.close()
         conn.close()
-
 
 @app.route("/api/teachers")
 def get_teachers():
@@ -530,8 +532,6 @@ def get_teachers():
     cur = conn.cursor()
     
     try:
-        # 1. Seleccionamos full_name además del id y el username
-        # Usamos COALESCE para que si full_name es NULL, traiga el username por defecto
         cur.execute("""
             SELECT id, full_name, username 
             FROM admins 
@@ -541,12 +541,10 @@ def get_teachers():
         
         rows = cur.fetchall()
         
-        # 2. Formateamos la respuesta para el frontend
         teachers = []
         for r in rows:
             teachers.append({
                 "id": r[0],
-                # Si r[1] (full_name) existe, lo usamos. Si no, r[2] (username)
                 "name": r[1] if r[1] else r[2] 
             })
             
@@ -558,6 +556,7 @@ def get_teachers():
     finally:
         cur.close()
         conn.close()
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
