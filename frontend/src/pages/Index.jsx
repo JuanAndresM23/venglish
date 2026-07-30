@@ -112,7 +112,7 @@ export default function Index() {
               <ul className="benefits-list">
                 <li>✅ Derecho a cancelar 2 clases.</li>
                 <li>✅ Acompañamiento completo.</li>
-                <li>✅ Atención 24/7.</li>
+                <li>✅ Atención Constante.</li>
               </ul>
             </div>
 

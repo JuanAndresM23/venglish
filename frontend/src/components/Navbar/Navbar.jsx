@@ -64,15 +64,15 @@ export default function Navbar({ user, setUser }) {
         {user && user.role === "admin" && (
           <>
             <Link className="nav-link" to="/dashboard" onClick={() => setIsOpen(false)}>Calendario</Link>
+            <Link className="nav-link" to="/teacher-schedule" onClick={() => setIsOpen(false)}>Mi Horario</Link>
             <Link className="nav-link" to="/add-student" onClick={() => setIsOpen(false)}>Registrar Alumno</Link>
-            
-            {/* VALIDACIÓN PARA VICTORIA (Nivel 1) */}
-            {user.level === 1 && ( // ← CORREGIDO, eliminado localStorage
-              <Link className="nav-link" to="/list-students" onClick={() => setIsOpen(false)}>
-                Lista Alumnos
-              </Link>
+    
+          {user.level === 1 && (
+             <Link className="nav-link" to="/list-students" onClick={() => setIsOpen(false)}>
+              Lista Alumnos
+             </Link>
             )}
-          </>
+           </>
         )}
 
         {/* --- SECCIÓN DE BOTONES DE ACCIÓN --- */}

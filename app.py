@@ -10,6 +10,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import psycopg2
 import os
+import TeacherSchedule from "./pages/TeacherSchedule";
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -33,22 +34,17 @@ def create_calendar_event(teacher_email, student_email, student_name, course_nam
         end_time = (datetime.strptime(time_str, "%H:%M") + timedelta(hours=1)).strftime("%H:%M")
         end_datetime = f"{date_str}T{end_time}:00"
 
-        attendees = [{"email": teacher_email}]
-        if student_email:
-            attendees.append({"email": student_email})
-
         event = {
             "summary": f"Clase de {course_name} - {student_name}",
-            "description": f"Clase agendada con {student_name} en Venglish Academy",
+            "description": f"Clase agendada con {student_name} en Venglish Academy\nEstudiante: {student_email or 'Sin correo'}",
             "start": {"dateTime": start_datetime, "timeZone": "America/Bogota"},
             "end": {"dateTime": end_datetime, "timeZone": "America/Bogota"},
-            "attendees": attendees,
             "reminders": {
                 "useDefault": False,
                 "overrides": [
-                    {"method": "email", "minutes": 1440},  # 24 horas antes
-                    {"method": "email", "minutes": 60},    # 1 hora antes
-                    {"method": "popup", "minutes": 30}     # 30 min antes
+                    {"method": "email", "minutes": 1440},
+                    {"method": "email", "minutes": 60},
+                    {"method": "popup", "minutes": 30}
                 ]
             }
         }
@@ -56,7 +52,7 @@ def create_calendar_event(teacher_email, student_email, student_name, course_nam
         event = service.events().insert(
             calendarId=teacher_email,
             body=event,
-            sendUpdates="all"
+            sendUpdates="none"  # ← CAMBIADO
         ).execute()
 
         print(f"Evento creado: {event.get('htmlLink')}")
@@ -556,6 +552,152 @@ def get_teachers():
     finally:
         cur.close()
         conn.close()
+
+
+
+# ============================================================
+# HORARIOS DE PROFESORES
+# ============================================================
+
+@app.route("/api/teacher/schedule", methods=["GET", "POST"])
+def teacher_schedule():
+    if not session.get("admin"):
+        return jsonify({"error": "No autorizado"}), 401
+    
+    teacher_id = session.get("user_id")
+    conn = get_connection()
+    cur = conn.cursor()
+
+    if request.method == "GET":
+        try:
+            cur.execute("""
+                SELECT id, day_of_week, start_time, end_time, is_available
+                FROM teacher_schedules
+                WHERE teacher_id = %s
+                ORDER BY day_of_week
+            """, (teacher_id,))
+            rows = cur.fetchall()
+            schedules = [{
+                "id": r[0],
+                "day_of_week": r[1],
+                "start_time": str(r[2]),
+                "end_time": str(r[3]),
+                "is_available": r[4]
+            } for r in rows]
+            return jsonify(schedules), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        finally:
+            cur.close()
+            conn.close()
+
+    if request.method == "POST":
+        data = request.json
+        try:
+            # Eliminar horarios anteriores del día
+            cur.execute("""
+                DELETE FROM teacher_schedules 
+                WHERE teacher_id = %s AND day_of_week = %s
+            """, (teacher_id, data.get("day_of_week")))
+
+            # Insertar nuevo horario
+            cur.execute("""
+                INSERT INTO teacher_schedules 
+                (teacher_id, day_of_week, start_time, end_time, is_available)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                teacher_id,
+                data.get("day_of_week"),
+                data.get("start_time"),
+                data.get("end_time"),
+                data.get("is_available", True)
+            ))
+            conn.commit()
+            return jsonify({"message": "Horario guardado"}), 201
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        finally:
+            cur.close()
+            conn.close()
+
+
+@app.route("/api/teachers/availability")
+def teachers_availability():
+    """Retorna profesores con su disponibilidad para una fecha y hora específica"""
+    date_str = request.args.get("date")
+    time_str = request.args.get("time")
+
+    if not date_str or not time_str:
+        return jsonify({"error": "Fecha y hora requeridas"}), 400
+
+    try:
+        # Obtener día de la semana (0=Lunes, 6=Domingo)
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        day_of_week = date_obj.weekday()
+        time_obj = datetime.strptime(time_str, "%H:%M").time()
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT a.id, a.full_name, a.username,
+                   ts.start_time, ts.end_time, ts.is_available
+            FROM admins a
+            LEFT JOIN teacher_schedules ts 
+                ON a.id = ts.teacher_id 
+                AND ts.day_of_week = %s
+            WHERE a.role_level = 0
+            ORDER BY a.full_name ASC
+        """, (day_of_week,))
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        teachers = []
+        for r in rows:
+            teacher_id = r[0]
+            name = r[1] if r[1] else r[2]
+            start_time = r[3]
+            end_time = r[4]
+            is_available = r[5]
+
+            # Verificar si el profesor tiene horario definido
+            if start_time is None or end_time is None or not is_available:
+                status = "unavailable"
+            elif start_time <= time_obj <= end_time:
+                status = "available"
+            else:
+                status = "unavailable"
+
+            # Verificar si ya tiene clase en ese horario
+            conn2 = get_connection()
+            cur2 = conn2.cursor()
+            cur2.execute("""
+                SELECT id FROM bookings
+                WHERE teacher_id = %s AND class_date = %s
+                AND class_time = %s
+            """, (teacher_id, date_str, time_str))
+            
+            if cur2.fetchone():
+                status = "busy"
+            
+            cur2.close()
+            conn2.close()
+
+            teachers.append({
+                "id": teacher_id,
+                "name": name,
+                "status": status,  # available, unavailable, busy
+                "start_time": str(start_time) if start_time else None,
+                "end_time": str(end_time) if end_time else None
+            })
+
+        return jsonify(teachers), 200
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

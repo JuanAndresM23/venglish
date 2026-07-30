@@ -14,6 +14,7 @@ import ListStudents from "./pages/ListStudents";
 import Navbar from "./components/Navbar/Navbar";
 import "./css/App.css";
 import API_URL from "./config";
+import TeacherSchedule from "./pages/TeacherSchedule";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -90,6 +91,15 @@ function App() {
           } 
         />
 
+        <Route 
+          path="/teacher-schedule" 
+          element={
+            user?.is_logged_in && user.role === 'admin' 
+              ? <TeacherSchedule /> 
+              : <Navigate to="/admin-login" /> 
+          } 
+        />
+        
         {/* Redirección por defecto */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
