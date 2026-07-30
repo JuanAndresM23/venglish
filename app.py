@@ -10,7 +10,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import psycopg2
 import os
-import TeacherSchedule from "./pages/TeacherSchedule";
+
 
 from dotenv import load_dotenv
 load_dotenv()
