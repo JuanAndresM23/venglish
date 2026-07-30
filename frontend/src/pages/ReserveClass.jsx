@@ -1,60 +1,69 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Grid,
-  MenuItem,
-  Select,
-  InputLabel,
-  FormControl,
-  TextField,
-  Alert
+  Box, Typography, Button, Paper, MenuItem,
+  Select, InputLabel, FormControl, TextField, Alert
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import SchoolIcon from "@mui/icons-material/School";
 import "../css/index.css";
-import API_URL from "../config"; // ← AGREGADO
+import API_URL from "../config";
+
+const STATUS_CONFIG = {
+  available:   { color: "#43a047", label: "Disponible",     emoji: "🟢" },
+  unavailable: { color: "#e53935", label: "No disponible",  emoji: "🔴" },
+  busy:        { color: "#fb8c00", label: "Ocupado",        emoji: "🟡" },
+};
 
 export default function ReserveClass() {
   const [courses, setCourses] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [form, setForm] = useState({ 
-    course_id: "", 
-    teacher_id: "",
-    date: "", 
-    time: "" 
-  });
-  const [error, setError] = useState("");     // ← AGREGADO
-  const [success, setSuccess] = useState(""); // ← AGREGADO
+  const [form, setForm] = useState({ course_id: "", teacher_id: "", date: "", time: "" });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
+  // Cargar cursos al inicio
   useEffect(() => {
-    // 1. Cargar Cursos
     fetch(`${API_URL}/api/reserve`, { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) throw new Error("Error cargando cursos");
-        return res.json();
-      })
-      .then((data) => setCourses(Array.isArray(data) ? data : []))
-      .catch((err) => setError("No se pudieron cargar los cursos. Intenta recargar.")); // ← CAMBIADO
-
-    // 2. Cargar Profesores
-    fetch(`${API_URL}/api/teachers`, { credentials: "include" }) // ← AGREGADO credentials
-      .then((res) => {
-        if (!res.ok) throw new Error("Error cargando profesores");
-        return res.json();
-      })
-      .then((data) => setTeachers(Array.isArray(data) ? data : []))
-      .catch((err) => setError("No se pudieron cargar los profesores. Intenta recargar.")); // ← CAMBIADO
+      .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+      .then(data => setCourses(Array.isArray(data) ? data : []))
+      .catch(() => setError("No se pudieron cargar los cursos."));
   }, []);
+
+  // Cargar disponibilidad cuando cambia fecha u hora
+  useEffect(() => {
+    if (form.date && form.time) {
+      fetch(`${API_URL}/api/teachers/availability?date=${form.date}&time=${form.time}`, {
+        credentials: "include"
+      })
+        .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+        .then(data => setTeachers(Array.isArray(data) ? data : []))
+        .catch(() => setError("No se pudieron cargar los profesores."));
+    } else {
+      // Si no hay fecha/hora aún carga lista básica
+      fetch(`${API_URL}/api/teachers`, { credentials: "include" })
+        .then(res => res.json())
+        .then(data => setTeachers(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }
+  }, [form.date, form.time]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    // Validar que el profesor seleccionado esté disponible
+    const selectedTeacher = teachers.find(t => t.id === form.teacher_id);
+    if (selectedTeacher && selectedTeacher.status === "unavailable") {
+      setError("Este profesor no está disponible en el horario seleccionado.");
+      return;
+    }
+    if (selectedTeacher && selectedTeacher.status === "busy") {
+      setError("Este profesor ya tiene una clase en este horario.");
+      return;
+    }
 
     try {
       const res = await fetch(`${API_URL}/api/reserve`, {
@@ -66,13 +75,13 @@ export default function ReserveClass() {
 
       const data = await res.json();
       if (res.ok) {
-        setSuccess("¡Clase reservada con éxito! 🎉 Redirigiendo..."); // ← CAMBIADO
-        setTimeout(() => navigate("/dashboard"), 2000);               // ← Redirige a los 2 segundos
+        setSuccess("¡Clase reservada con éxito! 🎉 Redirigiendo...");
+        setTimeout(() => navigate("/dashboard"), 2000);
       } else {
-        setError(data.error || "Error al reservar. Intenta de nuevo."); // ← CAMBIADO
+        setError(data.error || "Error al reservar. Intenta de nuevo.");
       }
     } catch (err) {
-      setError("Hubo un fallo de conexión. Intenta de nuevo."); // ← CAMBIADO
+      setError("Hubo un fallo de conexión. Intenta de nuevo.");
     }
   };
 
@@ -83,95 +92,107 @@ export default function ReserveClass() {
         <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
           <CalendarMonthIcon sx={{ fontSize: 50, color: "var(--venglish-pink)", mb: 1 }} />
           <Typography variant="h5" fontWeight="bold" color="textPrimary">Agendar Nueva Clase</Typography>
-          <Typography variant="body2" color="textSecondary">Elige curso, profesor y horario</Typography>
+          <Typography variant="body2" color="textSecondary">Elige fecha, hora y profesor</Typography>
         </Box>
 
-        {/* ← AGREGADO: Mensajes de error y éxito */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
-            ⚠️ {error}
-          </Alert>
-        )}
-        {success && (
-          <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
-            {success}
-          </Alert>
-        )}
+        {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>⚠️ {error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>{success}</Alert>}
 
         <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            
-            {/* Selector de Curso */}
-            <Grid item xs={12}>
-              <FormControl fullWidth variant="outlined">
-                <InputLabel id="course-label">Selecciona tu Curso</InputLabel>
-                <Select
-                  labelId="course-label"
-                  label="Selecciona tu Curso"
-                  value={form.course_id}
-                  onChange={(e) => setForm({ ...form, course_id: e.target.value })}
-                  required
-                  sx={{ borderRadius: "12px" }}
-                >
-                  {courses.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+          <Box display="flex" flexDirection="column" gap={3}>
 
-            {/* Selector de Profesor */}
-            <Grid item xs={12}>
-              <FormControl fullWidth variant="outlined">
-                <InputLabel id="teacher-label">Selecciona tu Profesor</InputLabel>
-                <Select
-                  labelId="teacher-label"
-                  label="Selecciona tu Profesor"
-                  value={form.teacher_id}
-                  onChange={(e) => setForm({ ...form, teacher_id: e.target.value })}
-                  required
-                  sx={{ borderRadius: "12px" }}
-                >
-                  {teachers.map((t) => (
-                    <MenuItem key={t.id} value={t.id}>
-                      <Box display="flex" alignItems="center">
-                        <SchoolIcon sx={{ mr: 1, fontSize: 20, color: "gray" }} />
-                        {t.name}
+            {/* Selector de Curso */}
+            <FormControl fullWidth variant="outlined">
+              <InputLabel id="course-label">Selecciona tu Curso</InputLabel>
+              <Select
+                labelId="course-label"
+                label="Selecciona tu Curso"
+                value={form.course_id}
+                onChange={(e) => setForm({ ...form, course_id: e.target.value })}
+                required
+                sx={{ borderRadius: "12px" }}
+              >
+                {courses.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Fecha y Hora — primero para calcular disponibilidad */}
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Fecha" type="date" fullWidth
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                required
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+              />
+              <TextField
+                label="Hora" type="time" fullWidth
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) => setForm({ ...form, time: e.target.value })}
+                required
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+              />
+            </Box>
+
+            {/* Selector de Profesor con semáforo */}
+            <FormControl fullWidth variant="outlined">
+              <InputLabel id="teacher-label">Selecciona tu Profesor</InputLabel>
+              <Select
+                labelId="teacher-label"
+                label="Selecciona tu Profesor"
+                value={form.teacher_id}
+                onChange={(e) => setForm({ ...form, teacher_id: e.target.value })}
+                required
+                sx={{ borderRadius: "12px" }}
+              >
+                {teachers.map((t) => {
+                  const status = STATUS_CONFIG[t.status] || STATUS_CONFIG.unavailable;
+                  return (
+                    <MenuItem 
+                      key={t.id} 
+                      value={t.id}
+                      disabled={t.status === "unavailable" || t.status === "busy"}
+                    >
+                      <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                        <Box display="flex" alignItems="center">
+                          <SchoolIcon sx={{ mr: 1, fontSize: 20, color: "gray" }} />
+                          {t.name}
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <span>{status.emoji}</span>
+                          <Typography variant="caption" sx={{ color: status.color, fontWeight: "bold" }}>
+                            {status.label}
+                          </Typography>
+                        </Box>
                       </Box>
                     </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+                  );
+                })}
+              </Select>
+            </FormControl>
 
-            {/* Fecha y Hora */}
-            <Grid item xs={12} sm={6}>
-              <TextField label="Fecha" type="date" fullWidth InputLabelProps={{ shrink: true }}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-              />
-            </Grid>
+            {/* Leyenda del semáforo */}
+            {form.date && form.time && (
+              <Box display="flex" gap={2} justifyContent="center" flexWrap="wrap">
+                {Object.values(STATUS_CONFIG).map(s => (
+                  <Typography key={s.label} variant="caption" sx={{ color: s.color }}>
+                    {s.emoji} {s.label}
+                  </Typography>
+                ))}
+              </Box>
+            )}
 
-            <Grid item xs={12} sm={6}>
-              <TextField label="Hora" type="time" fullWidth InputLabelProps={{ shrink: true }}
-                onChange={(e) => setForm({ ...form, time: e.target.value })}
-                required sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-              />
-            </Grid>
+            <Button type="submit" variant="contained" fullWidth
+              sx={{ py: 1.5, borderRadius: "12px", background: "var(--venglish-gradient)", fontWeight: "bold", fontSize: "1rem", boxShadow: "0 8px 15px rgba(255, 75, 176, 0.3)" }}>
+              Confirmar Reserva
+            </Button>
 
-            <Grid item xs={12}>
-              <Button type="submit" variant="contained" fullWidth
-                sx={{ py: 1.5, borderRadius: "12px", background: "var(--venglish-gradient)", fontWeight: "bold", fontSize: "1rem", boxShadow: "0 8px 15px rgba(255, 75, 176, 0.3)" }}>
-                Confirmar Reserva
-              </Button>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Button onClick={() => navigate("/dashboard")} fullWidth color="inherit" sx={{ textTransform: "none" }}>
-                Volver al Dashboard
-              </Button>
-            </Grid>
-          </Grid>
+            <Button onClick={() => navigate("/dashboard")} fullWidth color="inherit" sx={{ textTransform: "none" }}>
+              Volver al Dashboard
+            </Button>
+          </Box>
         </form>
       </Paper>
     </Box>
