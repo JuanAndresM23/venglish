@@ -306,12 +306,12 @@ export default function Index() {
             <div className="venglish-card card-p30" data-aos="zoom-in">
               <div className="icon-circle"><CiFacebook /></div>
               <h3>Facebook</h3>
-              <a href="https://wa.me/tu_numero" target="_blank" rel="noreferrer" className="login-btn">Chatear ahora</a>
+              <a href="https://www.facebook.com/profile.php?id=61590486891479#" target="_blank" rel="noreferrer" className="login-btn">Chatear ahora</a>
             </div>
             <div className="venglish-card card-p30" data-aos="zoom-in" data-aos-delay="200">
               <div className="icon-circle"><FaInstagram /></div>
               <h3>Instagram</h3>
-              <a href="https://instagram.com/venglish" target="_blank" rel="noreferrer" className="login-btn" style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>Seguirnos</a>
+              <a href="https://www.instagram.com/venglishcol/" target="_blank" rel="noreferrer" className="login-btn" style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>Seguirnos</a>
             </div>
             <div className="venglish-card card-p30" data-aos="zoom-in" data-aos-delay="400">
               <div className="icon-circle"><CgMailOpen /></div>
