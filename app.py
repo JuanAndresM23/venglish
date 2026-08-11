@@ -281,7 +281,7 @@ def post_reserve():
         return jsonify({"error": "No autorizado"}), 401
         
     data = request.json
-    course_id = data.get('course_id')
+    course_id = data.get('course_id',None)
     teacher_id = data.get('teacher_id')
     date_str = data.get('date')
     time_str = data.get('time')

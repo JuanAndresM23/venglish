@@ -1,35 +1,26 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box, Typography, Button, Paper, MenuItem,
-  Select, InputLabel, FormControl, TextField, Alert
+  Box, Typography, Button, Paper,
+  MenuItem, Select, InputLabel, FormControl, TextField, Alert
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-any";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import SchoolIcon from "@mui/icons-material/School";
 import "../css/index.css";
 import API_URL from "../config";
 
 const STATUS_CONFIG = {
-  available:   { color: "#43a047", label: "Disponible",     emoji: "🟢" },
-  unavailable: { color: "#e53935", label: "No disponible",  emoji: "🔴" },
-  busy:        { color: "#fb8c00", label: "Ocupado",        emoji: "🟡" },
+  available:   { color: "#43a047", label: "Disponible",    emoji: "🟢" },
+  unavailable: { color: "#e53935", label: "No disponible", emoji: "🔴" },
+  busy:        { color: "#fb8c00", label: "Ocupado",       emoji: "🟡" },
 };
 
 export default function ReserveClass() {
-  const [courses, setCourses] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [form, setForm] = useState({ course_id: "", teacher_id: "", date: "", time: "" });
+  const [form, setForm] = useState({ teacher_id: "", date: "", time: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
-
-  // Cargar cursos al inicio
-  useEffect(() => {
-    fetch(`${API_URL}/api/reserve`, { credentials: "include" })
-      .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-      .then(data => setCourses(Array.isArray(data) ? data : []))
-      .catch(() => setError("No se pudieron cargar los cursos."));
-  }, []);
 
   // Cargar disponibilidad cuando cambia fecha u hora
   useEffect(() => {
@@ -37,11 +28,10 @@ export default function ReserveClass() {
       fetch(`${API_URL}/api/teachers/availability?date=${form.date}&time=${form.time}`, {
         credentials: "include"
       })
-        .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+        .then(res => res.json())
         .then(data => setTeachers(Array.isArray(data) ? data : []))
         .catch(() => setError("No se pudieron cargar los profesores."));
     } else {
-      // Si no hay fecha/hora aún carga lista básica
       fetch(`${API_URL}/api/teachers`, { credentials: "include" })
         .then(res => res.json())
         .then(data => setTeachers(Array.isArray(data) ? data : []))
@@ -54,14 +44,20 @@ export default function ReserveClass() {
     setError("");
     setSuccess("");
 
-    // Validar que el profesor seleccionado esté disponible
-    const selectedTeacher = teachers.find(t => t.id === form.teacher_id);
-    if (selectedTeacher && selectedTeacher.status === "unavailable") {
-      setError("Este profesor no está disponible en el horario seleccionado.");
+    // Validar 48h de anticipación
+    const selectedDateTime = new Date(`${form.date}T${form.time}`);
+    const now = new Date();
+    const diffHours = (selectedDateTime - now) / (1000 * 60 * 60);
+
+    if (diffHours < 48) {
+      setError("Debes agendar con mínimo 48 horas de anticipación.");
       return;
     }
-    if (selectedTeacher && selectedTeacher.status === "busy") {
-      setError("Este profesor ya tiene una clase en este horario.");
+
+    // Validar disponibilidad del profesor
+    const selectedTeacher = teachers.find(t => String(t.id) === String(form.teacher_id));
+    if (selectedTeacher && selectedTeacher.status !== "available") {
+      setError("Este profesor no está disponible en el horario seleccionado.");
       return;
     }
 
@@ -85,6 +81,9 @@ export default function ReserveClass() {
     }
   };
 
+  // Fecha mínima = hoy + 48 horas
+  const minDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().split("T")[0];
+
   return (
     <Box sx={{ minHeight: "100vh", background: "var(--venglish-bg-gradient)", display: "flex", justifyContent: "center", alignItems: "center", p: 3 }}>
       <Paper elevation={4} sx={{ p: { xs: 3, md: 5 }, borderRadius: "25px", maxWidth: "500px", width: "100%", backgroundColor: "rgba(255, 255, 255, 0.9)", backdropFilter: "blur(10px)" }}>
@@ -92,7 +91,7 @@ export default function ReserveClass() {
         <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
           <CalendarMonthIcon sx={{ fontSize: 50, color: "var(--venglish-pink)", mb: 1 }} />
           <Typography variant="h5" fontWeight="bold" color="textPrimary">Agendar Nueva Clase</Typography>
-          <Typography variant="body2" color="textSecondary">Elige fecha, hora y profesor</Typography>
+          <Typography variant="body2" color="textSecondary">Elige fecha, hora y profesora</Typography>
         </Box>
 
         {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>⚠️ {error}</Alert>}
@@ -101,28 +100,12 @@ export default function ReserveClass() {
         <form onSubmit={handleSubmit}>
           <Box display="flex" flexDirection="column" gap={3}>
 
-            {/* Selector de Curso */}
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="course-label">Selecciona tu Curso</InputLabel>
-              <Select
-                labelId="course-label"
-                label="Selecciona tu Curso"
-                value={form.course_id}
-                onChange={(e) => setForm({ ...form, course_id: e.target.value })}
-                required
-                sx={{ borderRadius: "12px" }}
-              >
-                {courses.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Fecha y Hora — primero para calcular disponibilidad */}
+            {/* Fecha y Hora */}
             <Box display="flex" gap={2}>
               <TextField
                 label="Fecha" type="date" fullWidth
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ min: minDate }}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
                 required
                 sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
@@ -136,12 +119,12 @@ export default function ReserveClass() {
               />
             </Box>
 
-            {/* Selector de Profesor con semáforo */}
+            {/* Selector de Profesora con semáforo */}
             <FormControl fullWidth variant="outlined">
-              <InputLabel id="teacher-label">Selecciona tu Profesor</InputLabel>
+              <InputLabel id="teacher-label">Selecciona tu Profesora</InputLabel>
               <Select
                 labelId="teacher-label"
-                label="Selecciona tu Profesor"
+                label="Selecciona tu Profesora"
                 value={form.teacher_id}
                 onChange={(e) => setForm({ ...form, teacher_id: e.target.value })}
                 required
@@ -150,22 +133,24 @@ export default function ReserveClass() {
                 {teachers.map((t) => {
                   const status = STATUS_CONFIG[t.status] || STATUS_CONFIG.unavailable;
                   return (
-                    <MenuItem 
-                      key={t.id} 
+                    <MenuItem
+                      key={t.id}
                       value={t.id}
-                      disabled={t.status === "unavailable" || t.status === "busy"}
+                      disabled={t.status !== "available"}
                     >
                       <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
                         <Box display="flex" alignItems="center">
                           <SchoolIcon sx={{ mr: 1, fontSize: 20, color: "gray" }} />
                           {t.name}
                         </Box>
-                        <Box display="flex" alignItems="center" gap={0.5}>
-                          <span>{status.emoji}</span>
-                          <Typography variant="caption" sx={{ color: status.color, fontWeight: "bold" }}>
-                            {status.label}
-                          </Typography>
-                        </Box>
+                        {form.date && form.time && (
+                          <Box display="flex" alignItems="center" gap={0.5}>
+                            <span>{status.emoji}</span>
+                            <Typography variant="caption" sx={{ color: status.color, fontWeight: "bold" }}>
+                              {status.label}
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
                     </MenuItem>
                   );
@@ -173,7 +158,7 @@ export default function ReserveClass() {
               </Select>
             </FormControl>
 
-            {/* Leyenda del semáforo */}
+            {/* Leyenda */}
             {form.date && form.time && (
               <Box display="flex" gap={2} justifyContent="center" flexWrap="wrap">
                 {Object.values(STATUS_CONFIG).map(s => (
@@ -184,8 +169,13 @@ export default function ReserveClass() {
               </Box>
             )}
 
+            {/* Nota de política */}
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
+              📋 Las clases deben agendarse con mínimo <strong>48 horas</strong> de anticipación.
+            </Alert>
+
             <Button type="submit" variant="contained" fullWidth
-              sx={{ py: 1.5, borderRadius: "12px", background: "var(--venglish-gradient)", fontWeight: "bold", fontSize: "1rem", boxShadow: "0 8px 15px rgba(255, 75, 176, 0.3)" }}>
+              sx={{ py: 1.5, borderRadius: "12px", background: "var(--venglish-gradient)", fontWeight: "bold", fontSize: "1rem" }}>
               Confirmar Reserva
             </Button>
 
