@@ -197,15 +197,14 @@ def delete_booking(booking_id):
     if request.method == 'OPTIONS':
         return jsonify({"message": "ok"}), 200
 
-    if not session.get("admin"):
-        return jsonify({"error": "Acceso de administrador requerido"}), 401
+    if not session.get("admin") and not session.get("student_id"):
+        return jsonify({"error": "Acceso requerido"}), 401
 
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        # Obtener datos antes de eliminar
         cursor.execute("""
-            SELECT b.calendar_event_id, a.email 
+            SELECT b.calendar_event_id, a.email, b.class_date, b.class_time
             FROM bookings b
             JOIN admins a ON b.teacher_id = a.id
             WHERE b.id = %s
@@ -215,11 +214,18 @@ def delete_booking(booking_id):
         if not booking:
             return jsonify({"error": "La reserva no existe"}), 404
 
-        # Eliminar de la BD
+        # Validar regla de 12h si es estudiante
+        if session.get("student_id"):
+            class_datetime = datetime.combine(booking[2], booking[3])
+            colombia_offset = timedelta(hours=-5)
+            now_colombia = datetime.now(__import__('datetime').timezone.utc).replace(tzinfo=None) + colombia_offset
+            diff_hours = (class_datetime - now_colombia).total_seconds() / 3600
+            if diff_hours < 12:
+                return jsonify({"error": "No puedes cancelar con menos de 12 horas de anticipación"}), 400
+
         cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
         conn.commit()
 
-        # Eliminar de Google Calendar
         calendar_event_id = booking[0]
         teacher_email = booking[1]
         
@@ -232,7 +238,6 @@ def delete_booking(booking_id):
     finally:
         cursor.close()
         conn.close()
-
 @app.route("/api/my_classes")
 def my_classes():
     if "student_id" not in session:
