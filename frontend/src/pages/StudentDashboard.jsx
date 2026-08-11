@@ -72,22 +72,22 @@ export default function StudentDashboard() {
 
             <TableContainer component={Paper} sx={{ borderRadius: "15px", boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }}>
                 <Table>
-                    <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-                        <TableRow>
-                            <TableCell><strong>Profesora</strong></TableCell>
-                            <TableCell><strong>Fecha</strong></TableCell>
-                            <TableCell><strong>Hora</strong></TableCell>
-                            <TableCell><strong>Estado</strong></TableCell>
-                            <TableCell><strong>Acción</strong></TableCell>
-                        </TableRow>
-                    </TableHead>
+                  <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+    <TableRow>
+        <TableCell><strong>Profesora</strong></TableCell>
+        <TableCell><strong>Fecha</strong></TableCell>
+        <TableCell><strong>Hora</strong></TableCell>
+        <TableCell><strong>Estado</strong></TableCell>
+        <TableCell><strong>Acción</strong></TableCell>
+    </TableRow>
+</TableHead>
                     <TableBody>
                         {classes.length > 0 ? (
                             classes.map((c) => {
                                 const cancelable = canCancel(c.date, c.time);
                                 return (
                                     <TableRow key={c.id}>
-                                        <TableCell>{c.course}</TableCell>
+                                        <TableCell>{c.teacher}</TableCell>
                                         <TableCell>{c.date}</TableCell>
                                         <TableCell>{c.time}</TableCell>
                                         <TableCell>

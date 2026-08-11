@@ -246,9 +246,9 @@ def my_classes():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT b.id, c.course_name, b.class_date, b.class_time 
+        SELECT b.id, b.class_date, b.class_time, a.full_name
         FROM bookings b 
-        JOIN courses c ON b.course_id = c.id 
+        LEFT JOIN admins a ON b.teacher_id = a.id
         WHERE b.student_id = %s
         ORDER BY b.class_date, b.class_time
     """, (session["student_id"],))
@@ -256,16 +256,16 @@ def my_classes():
     classes = []
     for r in cursor.fetchall():
         classes.append({
-            "id": r[0], 
-            "course": r[1], 
-            "date": str(r[2]), 
-            "time": str(r[3])
+            "id": r[0],
+            "course": "Clase de Inglés",
+            "date": str(r[1]),
+            "time": str(r[2]),
+            "teacher": r[3] if r[3] else "Profesora"
         })
     
     cursor.close()
     conn.close()
     return jsonify(classes)
-
 @app.route("/api/reserve", methods=["GET", "POST"])
 def post_reserve():
     if request.method == "GET":
