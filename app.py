@@ -287,15 +287,17 @@ def post_reserve():
     time_str = data.get('time')
 
     if not teacher_id:
-        return jsonify({"error": "Debes seleccionar un profesor"}), 400
+     return jsonify({"error": "Debes seleccionar un profesor"}), 400
 
-    
-    from datetime import datetime, timedelta
+# Validación 48h
+    from datetime import timezone
     requested_datetime = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
-    if requested_datetime < datetime.now() + timedelta(hours=48):
+    colombia_offset = timedelta(hours=-5)
+    now_colombia = datetime.now(timezone.utc).replace(tzinfo=None) + colombia_offset
+    if requested_datetime < now_colombia + timedelta(hours=48):
         return jsonify({"error": "Debes agendar con mínimo 48 horas de anticipación"}), 400
 
-    requested_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+    requested_time = requested_datetime  # ← reutilizamos la variable
     start_limit = (requested_time - timedelta(minutes=59)).strftime("%H:%M:%S")
     end_limit = (requested_time + timedelta(minutes=59)).strftime("%H:%M:%S")
 
