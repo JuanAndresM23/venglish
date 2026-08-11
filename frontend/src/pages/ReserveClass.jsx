@@ -3,7 +3,7 @@ import {
   Box, Typography, Button, Paper,
   MenuItem, Select, InputLabel, FormControl, TextField, Alert
 } from "@mui/material";
-import { useNavigate } from "react-router-any";
+import { useNavigate } from "react-router-dom";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import SchoolIcon from "@mui/icons-material/School";
 import "../css/index.css";
