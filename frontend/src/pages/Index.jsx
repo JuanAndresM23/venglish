@@ -71,7 +71,7 @@ export default function Index() {
                 title: "Agendamiento",
                 rules: [
                   "Las clases deben agendarse con mínimo 48 horas de anticipación.",
-                  "Solo puedes seleccionar el horario disponible de cada profesora.",
+                  "Solo puedes seleccionar el horario disponible de cada docente.",
                   "El sistema bloquea automáticamente horarios ya ocupados."
                 ]
               },
@@ -90,6 +90,7 @@ export default function Index() {
                 rules: [
                   "Las clases inician en el horario acordado.",
                   "Si llegas tarde, la clase termina a la hora pactada de todas formas.",
+                  "El docente esperara maximo 15 minutos de la sesion",
                   "Tienes derecho a cancelar máximo 2 clases por mes sin descuento."
                 ]
               },
@@ -99,15 +100,6 @@ export default function Index() {
                 rules: [
                   "Recibirás un recordatorio por correo 24 horas antes de tu clase.",
                   "Asegúrate de tener tu correo actualizado en el sistema."
-                ]
-              },
-              {
-                emoji: "📌",
-                title: "General",
-                rules: [
-                  "No hay contratos de permanencia.",
-                  "El contenido se adapta a tu nivel y ritmo de aprendizaje.",
-                  "Para cualquier duda escríbenos a venglishcolombia@gmail.com"
                 ]
               }
             ].map((section, i) => (

@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import {
-  Box, Typography, Button, Paper,
-  MenuItem, Select, InputLabel, FormControl, TextField, Alert
+  Box,
+  Typography,
+  Button,
+  Paper,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+  TextField,
+  Alert,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -10,9 +18,9 @@ import "../css/index.css";
 import API_URL from "../config";
 
 const STATUS_CONFIG = {
-  available:   { color: "#43a047", label: "Disponible",    emoji: "🟢" },
+  available: { color: "#43a047", label: "Disponible", emoji: "🟢" },
   unavailable: { color: "#e53935", label: "No disponible", emoji: "🔴" },
-  busy:        { color: "#fb8c00", label: "Ocupado",       emoji: "🟡" },
+  busy: { color: "#fb8c00", label: "Ocupado", emoji: "🟡" },
 };
 
 export default function ReserveClass() {
@@ -25,16 +33,19 @@ export default function ReserveClass() {
   // Cargar disponibilidad cuando cambia fecha u hora
   useEffect(() => {
     if (form.date && form.time) {
-      fetch(`${API_URL}/api/teachers/availability?date=${form.date}&time=${form.time}`, {
-        credentials: "include"
-      })
-        .then(res => res.json())
-        .then(data => setTeachers(Array.isArray(data) ? data : []))
+      fetch(
+        `${API_URL}/api/teachers/availability?date=${form.date}&time=${form.time}`,
+        {
+          credentials: "include",
+        },
+      )
+        .then((res) => res.json())
+        .then((data) => setTeachers(Array.isArray(data) ? data : []))
         .catch(() => setError("No se pudieron cargar los profesores."));
     } else {
       fetch(`${API_URL}/api/teachers`, { credentials: "include" })
-        .then(res => res.json())
-        .then(data => setTeachers(Array.isArray(data) ? data : []))
+        .then((res) => res.json())
+        .then((data) => setTeachers(Array.isArray(data) ? data : []))
         .catch(() => {});
     }
   }, [form.date, form.time]);
@@ -55,7 +66,9 @@ export default function ReserveClass() {
     }
 
     // Validar disponibilidad del profesor
-    const selectedTeacher = teachers.find(t => String(t.id) === String(form.teacher_id));
+    const selectedTeacher = teachers.find(
+      (t) => String(t.id) === String(form.teacher_id),
+    );
     if (selectedTeacher && selectedTeacher.status !== "available") {
       setError("Este profesor no está disponible en el horario seleccionado.");
       return;
@@ -82,36 +95,102 @@ export default function ReserveClass() {
   };
 
   // Fecha mínima = hoy + 48 horas
-  const minDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const minDate = new Date(Date.now() + 48 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
 
   return (
-    <Box sx={{ minHeight: "100vh", background: "var(--venglish-bg-gradient)", display: "flex", justifyContent: "center", alignItems: "center", p: 3 }}>
-      <Paper elevation={4} sx={{ p: { xs: 3, md: 5 }, borderRadius: "25px", maxWidth: "500px", width: "100%", backgroundColor: "rgba(255, 255, 255, 0.9)", backdropFilter: "blur(10px)" }}>
-        
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: "var(--venglish-bg-gradient)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        p: 3,
+      }}
+    >
+      <Paper
+        elevation={4}
+        sx={{
+          p: { xs: 3, md: 5 },
+          borderRadius: "25px",
+          maxWidth: "500px",
+          width: "100%",
+          backgroundColor: "rgba(255, 255, 255, 0.9)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
         <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
-          <CalendarMonthIcon sx={{ fontSize: 50, color: "var(--venglish-pink)", mb: 1 }} />
-          <Typography variant="h5" fontWeight="bold" color="textPrimary">Agendar Nueva Clase</Typography>
-          <Typography variant="body2" color="textSecondary">Elige fecha, hora y profesora</Typography>
+          <CalendarMonthIcon
+            sx={{ fontSize: 50, color: "var(--venglish-pink)", mb: 1 }}
+          />
+          <Typography variant="h5" fontWeight="bold" color="textPrimary">
+            Agendar Nueva Clase
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            Elige fecha, hora y profesora
+          </Typography>
         </Box>
 
-        {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>⚠️ {error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>{success}</Alert>}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+            ⚠️ {error}
+          </Alert>
+        )}
+        {success && (
+          <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
+            {success}
+          </Alert>
+        )}
 
         <form onSubmit={handleSubmit}>
           <Box display="flex" flexDirection="column" gap={3}>
-
             {/* Fecha y Hora */}
             <Box display="flex" gap={2}>
+              <Box sx={{ flex: 1 }}>
+                <TextField
+                  label="Fecha"
+                  type="date"
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: minDate }}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  required
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+                />
+                {/* ← AGREGADO: Chip de agendable */}
+                {form.date && (
+                  <Box display="flex" alignItems="center" gap={1} mt={1}>
+                    {new Date(`${form.date}T00:00`) >=
+                    new Date(Date.now() + 48 * 60 * 60 * 1000) ? (
+                      <span
+                        style={{
+                          color: "#43a047",
+                          fontWeight: "bold",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        🟢 Agendable
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          color: "#e53935",
+                          fontWeight: "bold",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        🔴 No agendable — mínimo 48h de anticipación
+                      </span>
+                    )}
+                  </Box>
+                )}
+              </Box>
               <TextField
-                label="Fecha" type="date" fullWidth
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ min: minDate }}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required
-                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
-              />
-              <TextField
-                label="Hora" type="time" fullWidth
+                label="Hora"
+                type="time"
+                fullWidth
                 InputLabelProps={{ shrink: true }}
                 onChange={(e) => setForm({ ...form, time: e.target.value })}
                 required
@@ -121,32 +200,47 @@ export default function ReserveClass() {
 
             {/* Selector de Profesora con semáforo */}
             <FormControl fullWidth variant="outlined">
-              <InputLabel id="teacher-label">Selecciona tu Profesora</InputLabel>
+              <InputLabel id="teacher-label">
+                Selecciona tu Profesora
+              </InputLabel>
               <Select
                 labelId="teacher-label"
                 label="Selecciona tu Profesora"
                 value={form.teacher_id}
-                onChange={(e) => setForm({ ...form, teacher_id: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, teacher_id: e.target.value })
+                }
                 required
                 sx={{ borderRadius: "12px" }}
               >
                 {teachers.map((t) => {
-                  const status = STATUS_CONFIG[t.status] || STATUS_CONFIG.unavailable;
+                  const status =
+                    STATUS_CONFIG[t.status] || STATUS_CONFIG.unavailable;
                   return (
                     <MenuItem
                       key={t.id}
                       value={t.id}
                       disabled={t.status !== "available"}
                     >
-                      <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                      <Box
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        width="100%"
+                      >
                         <Box display="flex" alignItems="center">
-                          <SchoolIcon sx={{ mr: 1, fontSize: 20, color: "gray" }} />
+                          <SchoolIcon
+                            sx={{ mr: 1, fontSize: 20, color: "gray" }}
+                          />
                           {t.name}
                         </Box>
                         {form.date && form.time && (
                           <Box display="flex" alignItems="center" gap={0.5}>
                             <span>{status.emoji}</span>
-                            <Typography variant="caption" sx={{ color: status.color, fontWeight: "bold" }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ color: status.color, fontWeight: "bold" }}
+                            >
                               {status.label}
                             </Typography>
                           </Box>
@@ -160,9 +254,18 @@ export default function ReserveClass() {
 
             {/* Leyenda */}
             {form.date && form.time && (
-              <Box display="flex" gap={2} justifyContent="center" flexWrap="wrap">
-                {Object.values(STATUS_CONFIG).map(s => (
-                  <Typography key={s.label} variant="caption" sx={{ color: s.color }}>
+              <Box
+                display="flex"
+                gap={2}
+                justifyContent="center"
+                flexWrap="wrap"
+              >
+                {Object.values(STATUS_CONFIG).map((s) => (
+                  <Typography
+                    key={s.label}
+                    variant="caption"
+                    sx={{ color: s.color }}
+                  >
                     {s.emoji} {s.label}
                   </Typography>
                 ))}
@@ -171,15 +274,31 @@ export default function ReserveClass() {
 
             {/* Nota de política */}
             <Alert severity="info" sx={{ borderRadius: 2 }}>
-              📋 Las clases deben agendarse con mínimo <strong>48 horas</strong> de anticipación.
+              📋 Las clases deben agendarse con mínimo <strong>48 horas</strong>{" "}
+              de anticipación.
             </Alert>
 
-            <Button type="submit" variant="contained" fullWidth
-              sx={{ py: 1.5, borderRadius: "12px", background: "var(--venglish-gradient)", fontWeight: "bold", fontSize: "1rem" }}>
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              sx={{
+                py: 1.5,
+                borderRadius: "12px",
+                background: "var(--venglish-gradient)",
+                fontWeight: "bold",
+                fontSize: "1rem",
+              }}
+            >
               Confirmar Reserva
             </Button>
 
-            <Button onClick={() => navigate("/dashboard")} fullWidth color="inherit" sx={{ textTransform: "none" }}>
+            <Button
+              onClick={() => navigate("/dashboard")}
+              fullWidth
+              color="inherit"
+              sx={{ textTransform: "none" }}
+            >
               Volver al Dashboard
             </Button>
           </Box>
