@@ -504,7 +504,7 @@ def post_reserve():
 
         # GOOGLE CALENDAR
         try:
-            cur.execute("SELECT email FROM admins WHERE id = %s", (teacher_id,))
+            cur.execute("SELECT email, full_name FROM admins WHERE id = %s", (teacher_id,))
             teacher = cur.fetchone()
             
             cur.execute("SELECT name, email FROM students WHERE id = %s", (student_id,))
@@ -512,6 +512,11 @@ def post_reserve():
             
             cur.execute("SELECT course_name FROM courses WHERE id = %s", (course_id,))
             course = cur.fetchone()
+            
+            teacher_email = teacher[0] if teacher else None
+            teacher_name  = teacher[1] if teacher else "Docente"
+            student_name  = student[0] if student else "Estudiante"
+            student_email = student[1] if student and len(student) > 1 else None
             
             if teacher and teacher[0]:
                 event_id = create_calendar_event(
