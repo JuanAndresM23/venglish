@@ -6,11 +6,14 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 from flask import session
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import psycopg2
 import os
-
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -99,6 +102,131 @@ app.config.update(
     SESSION_PERMANENT=True
 )
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=60)
+
+GMAIL_USER = "venglishcolombia@gmail.com"
+
+def send_email(to_email, subject, body):
+    """Envía un email usando Gmail SMTP"""
+    if not to_email:
+        print(f"No se puede enviar email: destinatario vacío")
+        return False
+    try:
+        gmail_password = os.environ.get("GMAIL_PASSWORD")
+        msg = MIMEMultipart()
+        msg['From'] = f"Venglish Academy <{GMAIL_USER}>"
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'html'))
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, gmail_password)
+            server.sendmail(GMAIL_USER, to_email, msg.as_string())
+        
+        print(f"Email enviado a {to_email}")
+        return True
+    except Exception as e:
+        print(f"Error enviando email a {to_email}: {e}")
+        return False
+
+def notify_class_booked(teacher_email, teacher_name, student_name, student_email, date_str, time_str):
+    """Notifica cuando se agenda una clase"""
+    # Email al profesor
+    send_email(
+        teacher_email,
+        f"📚 Nueva clase agendada - {student_name}",
+        f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #ff4bb0;">¡Tienes una nueva clase!</h2>
+            <p>Hola <strong>{teacher_name}</strong>,</p>
+            <p>El estudiante <strong>{student_name}</strong> ha agendado una clase contigo.</p>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 12px; border-left: 4px solid #ff4bb0;">
+                <p>📅 <strong>Fecha:</strong> {date_str}</p>
+                <p>🕐 <strong>Hora:</strong> {time_str}</p>
+                <p>👤 <strong>Estudiante:</strong> {student_name}</p>
+            </div>
+            <p style="color: #888; font-size: 0.9rem;">Venglish Academy</p>
+        </div>
+        """
+    )
+    # Email al estudiante
+    send_email(
+        student_email,
+        f"✅ Clase confirmada - Venglish Academy",
+        f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #ff4bb0;">¡Tu clase está confirmada!</h2>
+            <p>Hola <strong>{student_name}</strong>,</p>
+            <p>Tu clase ha sido agendada exitosamente.</p>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 12px; border-left: 4px solid #ff4bb0;">
+                <p>📅 <strong>Fecha:</strong> {date_str}</p>
+                <p>🕐 <strong>Hora:</strong> {time_str}</p>
+                <p>👩‍🏫 <strong>Docente:</strong> {teacher_name}</p>
+            </div>
+            <p>Recuerda que puedes cancelar hasta <strong>12 horas antes</strong>.</p>
+            <p style="color: #888; font-size: 0.9rem;">Venglish Academy</p>
+        </div>
+        """
+    )
+
+def notify_class_cancelled_by_student(teacher_email, teacher_name, student_name, date_str, time_str):
+    """Notifica al profesor cuando el estudiante cancela"""
+    send_email(
+        teacher_email,
+        f"❌ Clase cancelada - {student_name}",
+        f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #e53935;">Clase cancelada</h2>
+            <p>Hola <strong>{teacher_name}</strong>,</p>
+            <p>El estudiante <strong>{student_name}</strong> ha cancelado su clase.</p>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 12px; border-left: 4px solid #e53935;">
+                <p>📅 <strong>Fecha:</strong> {date_str}</p>
+                <p>🕐 <strong>Hora:</strong> {time_str}</p>
+            </div>
+            <p>Este horario ha quedado libre en tu calendario.</p>
+            <p style="color: #888; font-size: 0.9rem;">Venglish Academy</p>
+        </div>
+        """
+    )
+
+def notify_class_cancelled_by_teacher(student_email, student_name, teacher_name, date_str, time_str):
+    """Notifica al estudiante cuando el profesor cancela"""
+    send_email(
+        student_email,
+        f"❌ Tu clase fue cancelada - Venglish Academy",
+        f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #e53935;">Tu clase fue cancelada</h2>
+            <p>Hola <strong>{student_name}</strong>,</p>
+            <p>Lamentamos informarte que tu docente <strong>{teacher_name}</strong> ha cancelado la clase.</p>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 12px; border-left: 4px solid #e53935;">
+                <p>📅 <strong>Fecha:</strong> {date_str}</p>
+                <p>🕐 <strong>Hora:</strong> {time_str}</p>
+            </div>
+            <p>Por favor agenda una nueva clase en la plataforma.</p>
+            <p style="color: #888; font-size: 0.9rem;">Venglish Academy</p>
+        </div>
+        """
+    )
+
+def send_reminder(to_email, name, teacher_name, date_str, time_str, hours_before):
+    """Envía recordatorio de clase"""
+    send_email(
+        to_email,
+        f"⏰ Recordatorio: Clase en {hours_before} hora{'s' if hours_before > 1 else ''}",
+        f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #ff4bb0;">⏰ Recordatorio de clase</h2>
+            <p>Hola <strong>{name}</strong>,</p>
+            <p>Te recordamos que tienes una clase en <strong>{hours_before} hora{'s' if hours_before > 1 else ''}</strong>.</p>
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 12px; border-left: 4px solid #ff4bb0;">
+                <p>📅 <strong>Fecha:</strong> {date_str}</p>
+                <p>🕐 <strong>Hora:</strong> {time_str}</p>
+                <p>👩‍🏫 <strong>Docente:</strong> {teacher_name}</p>
+            </div>
+            <p style="color: #888; font-size: 0.9rem;">Venglish Academy</p>
+        </div>
+        """
+    )
 
 @app.before_request
 def make_session_permanent():
@@ -203,10 +331,13 @@ def delete_booking(booking_id):
     conn = get_connection()
     cursor = conn.cursor()
     try:
+        # Obtener todos los datos necesarios antes de eliminar
         cursor.execute("""
-            SELECT b.calendar_event_id, a.email, b.class_date, b.class_time
+            SELECT b.calendar_event_id, a.email, b.class_date, b.class_time,
+                   a.full_name, s.name, s.email
             FROM bookings b
             JOIN admins a ON b.teacher_id = a.id
+            JOIN students s ON b.student_id = s.id
             WHERE b.id = %s
         """, (booking_id,))
         booking = cursor.fetchone()
@@ -214,30 +345,62 @@ def delete_booking(booking_id):
         if not booking:
             return jsonify({"error": "La reserva no existe"}), 404
 
+        calendar_event_id = booking[0]
+        teacher_email     = booking[1]
+        class_date        = booking[2]
+        class_time        = booking[3]
+        teacher_name      = booking[4]
+        student_name      = booking[5]
+        student_email     = booking[6]
+
         # Validar regla de 12h si es estudiante
         if session.get("student_id"):
-            class_datetime = datetime.combine(booking[2], booking[3])
+            class_datetime = datetime.combine(class_date, class_time)
             colombia_offset = timedelta(hours=-5)
             now_colombia = datetime.now(__import__('datetime').timezone.utc).replace(tzinfo=None) + colombia_offset
             diff_hours = (class_datetime - now_colombia).total_seconds() / 3600
             if diff_hours < 12:
                 return jsonify({"error": "No puedes cancelar con menos de 12 horas de anticipación"}), 400
 
+        # Eliminar de la BD
         cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
         conn.commit()
 
-        calendar_event_id = booking[0]
-        teacher_email = booking[1]
-        
+        # Eliminar de Google Calendar
         if calendar_event_id and teacher_email:
             delete_calendar_event(teacher_email, calendar_event_id)
 
+        # Notificaciones por email según quién cancela
+        try:
+            if session.get("student_id"):
+                # Estudiante cancela → notificar al profesor
+                notify_class_cancelled_by_student(
+                    teacher_email=teacher_email,
+                    teacher_name=teacher_name,
+                    student_name=student_name,
+                    date_str=str(class_date),
+                    time_str=str(class_time)
+                )
+            else:
+                # Profesor/Victoria cancela → notificar al estudiante
+                notify_class_cancelled_by_teacher(
+                    student_email=student_email,
+                    student_name=student_name,
+                    teacher_name=teacher_name,
+                    date_str=str(class_date),
+                    time_str=str(class_time)
+                )
+        except Exception as e:
+            print(f"Error enviando notificación de cancelación: {e}")
+
         return jsonify({"message": "Reserva eliminada con éxito"}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         conn.close()
+
 @app.route("/api/my_classes")
 def my_classes():
     if "student_id" not in session:
@@ -266,6 +429,7 @@ def my_classes():
     cursor.close()
     conn.close()
     return jsonify(classes)
+
 @app.route("/api/reserve", methods=["GET", "POST"])
 def post_reserve():
     if request.method == "GET":
@@ -364,6 +528,16 @@ def post_reserve():
                         UPDATE bookings SET calendar_event_id = %s WHERE id = %s
                     """, (event_id, booking_id))
                     conn.commit()
+
+            # ← AGREGAR: Notificaciones por email
+            notify_class_booked(
+                teacher_email=teacher[0] if teacher else None,
+                teacher_name=teacher[1] if teacher else "Docente",
+                student_name=student[0] if student else "Estudiante",
+                student_email=student[1] if student and len(student) > 1 else None,
+                date_str=date_str,
+                time_str=time_str
+            )
                     
         except Exception as e:
             print(f"Error al crear evento en Calendar: {e}")
@@ -711,6 +885,59 @@ def teachers_availability():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+
+# ============================================================
+# RECORDATORIOS AUTOMÁTICOS
+# ============================================================
+
+def send_reminders():
+    """Ejecuta cada hora y envía recordatorios 24h y 1h antes"""
+    print("Ejecutando recordatorios...")
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        
+        colombia_offset = timedelta(hours=-5)
+        now_colombia = datetime.now(__import__('datetime').timezone.utc).replace(tzinfo=None) + colombia_offset
+
+        # Buscar clases en las próximas 24h y 1h
+        for hours in [24, 1]:
+            target_time = now_colombia + timedelta(hours=hours)
+            target_date = target_time.date()
+            target_hour = target_time.strftime("%H:%M")
+
+            cur.execute("""
+                SELECT b.id, s.name, s.email, a.full_name, a.email, 
+                       b.class_date, b.class_time
+                FROM bookings b
+                JOIN students s ON b.student_id = s.id
+                JOIN admins a ON b.teacher_id = a.id
+                WHERE b.class_date = %s
+                AND TO_CHAR(b.class_time, 'HH24:MI') = %s
+                AND b.status = 'scheduled'
+            """, (target_date, target_hour))
+
+            classes = cur.fetchall()
+            for c in classes:
+                student_name, student_email = c[1], c[2]
+                teacher_name, teacher_email = c[3], c[4]
+                date_str, time_str = str(c[5]), str(c[6])
+
+                # Recordatorio al estudiante
+                send_reminder(student_email, student_name, teacher_name, date_str, time_str, hours)
+                # Recordatorio al profesor
+                send_reminder(teacher_email, teacher_name, teacher_name, date_str, time_str, hours)
+
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Error en recordatorios: {e}")
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(send_reminders, 'interval', hours=1)
+scheduler.start()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
