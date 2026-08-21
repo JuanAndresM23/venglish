@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from flask import session
 import json
 import threading
+import resend
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -112,21 +113,23 @@ def send_email(to_email, subject, body):
         print(f"No se puede enviar email: destinatario vacío")
         return False
 
+import resend
+
+def send_email(to_email, subject, body):
+    """Envía un email usando Resend"""
+    if not to_email:
+        print(f"No se puede enviar email: destinatario vacío")
+        return False
+
     def _send():
         try:
-            gmail_password = os.environ.get("GMAIL_PASSWORD")
-            msg = MIMEMultipart()
-            msg['From'] = f"Venglish Academy <{GMAIL_USER}>"
-            msg['To'] = to_email
-            msg['Subject'] = subject
-            msg.attach(MIMEText(body, 'html'))
-
-            with smtplib.SMTP('smtp.gmail.com', 587) as server:
-                server.ehlo()
-                server.starttls()
-                server.login(GMAIL_USER, gmail_password)
-                server.sendmail(GMAIL_USER, to_email, msg.as_string())
-
+            resend.api_key = os.environ.get("RESEND_API_KEY")
+            resend.Emails.send({
+                "from": "Venglish Academy <notificaciones@venglishacademy.lat>",
+                "to": to_email,
+                "subject": subject,
+                "html": body
+            })
             print(f"Email enviado a {to_email}")
         except Exception as e:
             print(f"Error enviando email a {to_email}: {e}")
