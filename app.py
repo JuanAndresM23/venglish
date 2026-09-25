@@ -212,6 +212,26 @@ def courses():
         rows = cursor.fetchall()
     return jsonify([{"id": row[0], "name": row[1]} for row in rows])
 
+@app.get("/api/reserve")
+@student_required
+def reserve_get():
+    with db_cursor() as cursor:
+        cursor.execute(
+            "SELECT id, course_name FROM courses ORDER BY course_name"
+        )
+
+        rows = cursor.fetchall()
+
+    return jsonify(
+        [
+            {
+                "id": row[0],
+                "name": row[1],
+            }
+            for row in rows
+        ]
+    )
+
 
 @app.get("/api/teachers")
 def teachers():
