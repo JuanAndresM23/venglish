@@ -1,7 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-
-// Importación de Páginas
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { apiFetch } from "./api";
 import Index from "./pages/Index";
 import StudentLogin from "./pages/StudentLogin";
 import StudentRegister from "./pages/StudentRegister";
@@ -10,91 +9,46 @@ import ReserveClass from "./pages/ReserveClass";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AddStudent from "./pages/AddStudent";
-import ListStudents from "./pages/ListStudents"; 
+import ListStudents from "./pages/ListStudents";
 import Navbar from "./components/Navbar/Navbar";
 import "./css/App.css";
-import API_URL from "./config";
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Verificación de sesión inicial
-  useEffect(() => {
-    fetch(`${API_URL}/api/me`, { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        setUser(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setUser(null);
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) return <div className="loading">Cargando Venglish...</div>;
-
-  return (
-    <Router>
-      {/* Pasamos setUser al Navbar por si necesitas manejar el Logout ahí */}
-      <Navbar user={user} setUser={setUser} /> 
-      
-      <Routes>
-        {/* 1. RUTAS PÚBLICAS */}
-        <Route path="/" element={<Index />} />
-        <Route path="/student-register" element={<StudentRegister />} />
-        
-        {/* 2. LOGINS (Redirigen al dashboard si ya hay sesión) */}
-        <Route 
-          path="/login" 
-          element={user?.is_logged_in ? <Navigate to="/dashboard" /> : <StudentLogin setUser={setUser} />} 
-        />
-        <Route 
-          path="/admin-login" 
-          element={user?.is_logged_in ? <Navigate to="/dashboard" /> : <AdminLogin setUser={setUser} />} 
-        />
-
-        {/* 3. DASHBOARD ÚNICO (Lógica de Roles) */}
-        <Route 
-          path="/dashboard" 
-          element={
-            user?.is_logged_in 
-              ? (user.role === 'admin' ? <AdminDashboard /> : <StudentDashboard user={user} />) 
-              : <Navigate to="/" /> 
-          } 
-        />
-
-        {/* 4. RUTAS PROTEGIDAS ESTUDIANTES */}
-        <Route 
-          path="/reserve" 
-          element={user?.is_logged_in && user.role === 'student' ? <ReserveClass /> : <Navigate to="/login" />} 
-        />
-
-        {/* 5. RUTAS PROTEGIDAS ADMIN (VICTORIA) */}
-        <Route 
-          path="/add-student" 
-          element={
-            user?.is_logged_in && user.role === 'admin' 
-              ? <AddStudent /> 
-              : <Navigate to="/admin-login" /> 
-          } 
-        />
-
-        <Route 
-          path="/list-students" 
-          element={
-            user?.is_logged_in && user.role === 'admin' 
-              ? <ListStudents /> 
-              : <Navigate to="/admin-login" /> 
-          } 
-        />
-
-        {/* Redirección por defecto */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </Router>
-  );
+function RequireAuth({ user, role, level, children }) {
+  if (!user?.is_logged_in) return <Navigate to={role === "admin" ? "/admin-login" : "/login"} replace />;
+  if (role && user.role !== role) return <Navigate to="/dashboard" replace />;
+  if (level !== undefined && user.level !== level) return <Navigate to="/dashboard" replace />;
+  return children;
 }
 
-export default App;
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch("/api/me")
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="loading">Cargando VEnglish...</div>;
+
+  return (
+    <BrowserRouter>
+      <Navbar user={user} setUser={setUser} />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/student-register" element={<StudentRegister />} />
+        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <StudentLogin setUser={setUser} />} />
+        <Route path="/admin-login" element={user ? <Navigate to="/dashboard" replace /> : <AdminLogin setUser={setUser} />} />
+        <Route path="/dashboard" element={
+          <RequireAuth user={user}>{user?.role === "admin" ? <AdminDashboard /> : <StudentDashboard />}</RequireAuth>
+        } />
+        <Route path="/reserve" element={<RequireAuth user={user} role="student"><ReserveClass /></RequireAuth>} />
+        <Route path="/add-student" element={<RequireAuth user={user} role="admin" level={1}><AddStudent /></RequireAuth>} />
+        <Route path="/list-students" element={<RequireAuth user={user} role="admin" level={1}><ListStudents /></RequireAuth>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
