@@ -51,7 +51,7 @@ const fetchEvents = async () => {
 
     if (window.confirm(`¿Estás seguro de que deseas cancelar la clase: "${eventTitle}"?`)) {
         try {
-      const response = await fetch(`${API_URL}/delete_booking/${eventId}`, {
+      const response = await fetch(`${API_URL}/api/delete_booking/${eventId}`, {
     method: 'DELETE',
     credentials: 'include', 
     headers: {

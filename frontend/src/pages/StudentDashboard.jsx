@@ -44,7 +44,7 @@ export default function StudentDashboard() {
         if (!window.confirm("¿Estás seguro de que deseas cancelar esta clase?")) return;
 
         try {
-            const res = await fetch(`${API_URL}/delete_booking/${bookingId}`, {
+            const res = await fetch(`${API_URL}/api/delete_booking/${bookingId}`, {
                 method: "DELETE",
                 credentials: "include"
             });

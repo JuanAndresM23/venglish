@@ -83,6 +83,8 @@ def delete_calendar_event(teacher_email, event_id):
 
 app = Flask(__name__)
 app.secret_key = "Parkour2311"
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
 
 CORS(app, 
      supports_credentials=True, 
@@ -331,7 +333,7 @@ def student_register():
         cursor.close()
         conn.close()
 
-@app.route("/delete_booking/<int:booking_id>", methods=['DELETE', 'OPTIONS'])
+@app.route("/api/delete_booking/<int:booking_id>", methods=['DELETE', 'OPTIONS'])
 def delete_booking(booking_id):
     if request.method == 'OPTIONS':
         return jsonify({"message": "ok"}), 200
