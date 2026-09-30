@@ -12,6 +12,8 @@ import AddStudent from "./pages/AddStudent";
 import ListStudents from "./pages/ListStudents";
 import Navbar from "./components/Navbar/Navbar";
 import "./css/App.css";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function RequireAuth({ user, role, level, children }) {
   if (!user?.is_logged_in) return <Navigate to={role === "admin" ? "/admin-login" : "/login"} replace />;
@@ -38,6 +40,8 @@ export default function App() {
       <Navbar user={user} setUser={setUser} />
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/forgot-password" element={<ForgotPassword />}/>
+        <Route path="/reset-password" element={<ResetPassword />}/>
         <Route path="/student-register" element={<StudentRegister />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <StudentLogin setUser={setUser} />} />
         <Route path="/admin-login" element={user ? <Navigate to="/dashboard" replace /> : <AdminLogin setUser={setUser} />} />

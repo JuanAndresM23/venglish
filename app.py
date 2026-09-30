@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timedelta
 from functools import wraps
 from zoneinfo import ZoneInfo
+import secrets
 
 from dotenv import load_dotenv
 load_dotenv(override=os.getenv("APP_ENV", "development") == "development")
@@ -14,11 +15,19 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
 from database import db_cursor
+from services.email_service import (
+    send_student_booking_email,
+    send_teacher_booking_email,
+    send_student_cancellation_email,
+    send_teacher_cancellation_email,
+    send_password_reset_email
+)
 
 BOGOTA = ZoneInfo("America/Bogota")
 CLASS_DURATION_MINUTES = 60
 MIN_BOOKING_NOTICE_HOURS = 48
 MIN_CANCELLATION_NOTICE_HOURS = 12
+
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -146,6 +155,152 @@ def student_login():
     return jsonify({"message": "Login exitoso"}), 200
 
 
+@app.post("/api/forgot_password")
+def forgot_password():
+
+    data = json_body()
+
+    email = clean_text(
+        data.get("email"),
+        255
+    ).lower()
+
+    if not email:
+        return jsonify({
+            "error": "Correo requerido"
+        }), 400
+
+    with db_cursor(commit=True) as cursor:
+
+        cursor.execute("""
+            SELECT id, name, email
+            FROM students
+            WHERE LOWER(email) = %s
+        """, (email,))
+
+        student = cursor.fetchone()
+
+        if not student:
+            return jsonify({
+                "message": "Si el correo existe, enviaremos instrucciones."
+            }), 200
+
+        token = secrets.token_urlsafe(32)
+
+        expires_at = datetime.now() + timedelta(hours=1)
+
+        cursor.execute("""
+            INSERT INTO password_reset_tokens (
+                student_id,
+                token,
+                expires_at
+            )
+            VALUES (%s, %s, %s)
+        """,
+        (
+            student[0],
+            token,
+            expires_at
+        ))
+
+    reset_link = (
+        f"{app.config['FRONTEND_ORIGINS'][0]}"
+        f"/reset-password?token={token}"
+    )
+
+    send_password_reset_email(
+        student_name=student[1],
+        student_email=student[2],
+        reset_link=reset_link
+    )
+
+    return jsonify({
+        "message": "Si el correo existe, enviaremos instrucciones."
+    }), 200
+
+@app.post("/api/reset_password")
+def reset_password():
+
+    data = json_body()
+
+    token = clean_text(
+        data.get("token"),
+        255
+    )
+
+    new_password = str(
+        data.get("password") or ""
+    )
+
+    if not token or not new_password:
+        return jsonify({
+            "error": "Token y contraseña requeridos"
+        }), 400
+
+    with db_cursor(commit=True) as cursor:
+
+        cursor.execute("""
+            SELECT
+                id,
+                student_id,
+                expires_at,
+                used
+            FROM password_reset_tokens
+            WHERE token = %s
+        """, (token,))
+
+        reset = cursor.fetchone()
+
+        if not reset:
+            return jsonify({
+                "error": "Token inválido"
+            }), 400
+
+        if reset[3]:
+            return jsonify({
+                "error": "Token ya utilizado"
+            }), 400
+
+        if reset[2] < datetime.now():
+            return jsonify({
+                "error": "Token expirado"
+            }), 400
+
+        cursor.execute("""
+            UPDATE students
+            SET password = %s
+            WHERE id = %s
+        """,
+        (
+            generate_password_hash(new_password),
+            reset[1]
+        ))
+
+        cursor.execute("""
+            UPDATE password_reset_tokens
+            SET used = TRUE
+            WHERE id = %s
+        """,
+        (
+            reset[0],
+        ))
+
+    return jsonify({
+        "message": "Contraseña actualizada correctamente"
+    }), 200
+        
+    cursor.execute("""
+            UPDATE password_reset_tokens
+            SET used = TRUE
+            WHERE id = %s
+        """,
+        (reset[0],))
+
+    return jsonify({
+        "message": "Contraseña actualizada correctamente"
+    }), 200
+
+
 @app.post("/api/student_register")
 def student_register():
     data = json_body()
@@ -250,59 +405,182 @@ def teachers():
 @student_required
 def reserve():
     data = json_body()
+
     course_id = data.get("course_id")
     teacher_id = data.get("teacher_id")
     date_text = clean_text(data.get("date"), 10)
     time_text = clean_text(data.get("time"), 5)
+
     requested_at = parse_class_datetime(date_text, time_text)
 
     if not all([course_id, teacher_id, date_text, time_text]) or requested_at is None:
-        return jsonify({"error": "Curso, profesor, fecha y hora son requeridos"}), 400
+        return jsonify({
+            "error": "Curso, profesor, fecha y hora son requeridos"
+        }), 400
+
     if requested_at < datetime.now(BOGOTA) + timedelta(hours=MIN_BOOKING_NOTICE_HOURS):
-        return jsonify({"error": "Debes reservar con mínimo 48 horas de anticipación"}), 400
+        return jsonify({
+            "error": "Debes reservar con mínimo 48 horas de anticipación"
+        }), 400
 
     class_end = requested_at + timedelta(minutes=CLASS_DURATION_MINUTES)
+
     student_id = session["student_id"]
+
+    reservation_data = None
 
     try:
         with db_cursor(commit=True) as cursor:
-            cursor.execute("SELECT 1 FROM courses WHERE id = %s", (course_id,))
+
+            cursor.execute(
+                "SELECT 1 FROM courses WHERE id = %s",
+                (course_id,)
+            )
+
             if not cursor.fetchone():
-                return jsonify({"error": "Curso inválido"}), 400
-            cursor.execute("SELECT 1 FROM admins WHERE id = %s AND role_level = 0", (teacher_id,))
+                return jsonify({
+                    "error": "Curso inválido"
+                }), 400
+
+            cursor.execute(
+                "SELECT 1 FROM admins WHERE id = %s AND role_level = 0",
+                (teacher_id,)
+            )
+
             if not cursor.fetchone():
-                return jsonify({"error": "Profesor inválido"}), 400
+                return jsonify({
+                    "error": "Profesor inválido"
+                }), 400
 
             cursor.execute("""
-                SELECT id FROM bookings
+                SELECT id
+                FROM bookings
                 WHERE student_id = %s
                   AND (class_date + class_time) < %s
                   AND (class_date + class_time + INTERVAL '60 minutes') > %s
                 FOR UPDATE
-            """, (student_id, class_end.replace(tzinfo=None), requested_at.replace(tzinfo=None)))
+            """,
+            (
+                student_id,
+                class_end.replace(tzinfo=None),
+                requested_at.replace(tzinfo=None)
+            ))
+
             if cursor.fetchone():
-                return jsonify({"error": "Ya tienes una clase que se cruza con ese horario"}), 409
+                return jsonify({
+                    "error": "Ya tienes una clase que se cruza con ese horario"
+                }), 409
 
             cursor.execute("""
-                SELECT id FROM bookings
+                SELECT id
+                FROM bookings
                 WHERE teacher_id = %s
                   AND (class_date + class_time) < %s
                   AND (class_date + class_time + INTERVAL '60 minutes') > %s
                 FOR UPDATE
-            """, (teacher_id, class_end.replace(tzinfo=None), requested_at.replace(tzinfo=None)))
+            """,
+            (
+                teacher_id,
+                class_end.replace(tzinfo=None),
+                requested_at.replace(tzinfo=None)
+            ))
+
             if cursor.fetchone():
-                return jsonify({"error": "El profesor ya está ocupado en ese horario"}), 409
+                return jsonify({
+                    "error": "El profesor ya está ocupado en ese horario"
+                }), 409
 
             cursor.execute("""
-                INSERT INTO bookings (course_id, student_id, teacher_id, class_date, class_time)
+                INSERT INTO bookings (
+                    course_id,
+                    student_id,
+                    teacher_id,
+                    class_date,
+                    class_time
+                )
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING id
-            """, (course_id, student_id, teacher_id, date_text, time_text))
-            booking_id = cursor.fetchone()[0]
-    except IntegrityError:
-        return jsonify({"error": "El horario acaba de ser reservado. Selecciona otro"}), 409
+            """,
+            (
+                course_id,
+                student_id,
+                teacher_id,
+                date_text,
+                time_text
+            ))
 
-    return jsonify({"message": "Reserva confirmada", "booking_id": booking_id}), 201
+            booking_id = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT
+                    s.name,
+                    s.email,
+                    c.course_name,
+                    COALESCE(a.full_name, a.username),
+                    a.email
+                FROM students s
+                JOIN courses c ON c.id = %s
+                JOIN admins a ON a.id = %s
+                WHERE s.id = %s
+            """,
+            (
+                course_id,
+                teacher_id,
+                student_id
+            ))
+
+            reservation_data = cursor.fetchone()
+
+    except IntegrityError:
+        return jsonify({
+            "error": "El horario acaba de ser reservado. Selecciona otro"
+        }), 409
+
+    except Exception as e:
+        logger.exception(f"Error creando reserva: {e}")
+
+        return jsonify({
+            "error": "No fue posible crear la reserva"
+        }), 500
+
+    try:
+        if reservation_data:
+
+            student_name = reservation_data[0]
+            student_email = reservation_data[1]
+
+            course_name = reservation_data[2]
+
+            teacher_name = reservation_data[3]
+            teacher_email = reservation_data[4]
+
+            send_student_booking_email(
+                student_name=student_name,
+                student_email=student_email,
+                teacher_name=teacher_name,
+                course_name=course_name,
+                date=date_text,
+                time=time_text
+            )
+
+            send_teacher_booking_email(
+                teacher_name=teacher_name,
+                teacher_email=teacher_email,
+                student_name=student_name,
+                course_name=course_name,
+                date=date_text,
+                time=time_text
+            )
+
+    except Exception as email_error:
+        logger.exception(
+            f"Error enviando correos de reserva: {email_error}"
+        )
+
+    return jsonify({
+        "message": "Reserva confirmada",
+        "booking_id": booking_id
+    }), 201
 
 
 @app.get("/api/my_classes")
@@ -328,32 +606,117 @@ def my_classes():
 @app.delete("/api/bookings/<int:booking_id>")
 def cancel_booking(booking_id):
     role = session.get("role")
+
     if role not in {"student", "admin"}:
         return jsonify({"error": "No autorizado"}), 401
 
+    cancellation_data = None
+
     with db_cursor(commit=True) as cursor:
+
         cursor.execute("""
-            SELECT student_id, teacher_id, class_date, class_time
-            FROM bookings WHERE id = %s FOR UPDATE
+            SELECT
+                b.student_id,
+                b.teacher_id,
+                b.class_date,
+                b.class_time,
+                s.name,
+                s.email,
+                c.course_name,
+                COALESCE(a.full_name, a.username),
+                a.email
+            FROM bookings b
+            JOIN students s ON b.student_id = s.id
+            JOIN courses c ON b.course_id = c.id
+            JOIN admins a ON b.teacher_id = a.id
+            WHERE b.id = %s
+            FOR UPDATE
         """, (booking_id,))
+
         booking = cursor.fetchone()
+
         if not booking:
-            return jsonify({"error": "La reserva no existe"}), 404
+            return jsonify({
+                "error": "La reserva no existe"
+            }), 404
 
         if role == "student":
-            if booking[0] != session.get("student_id"):
-                return jsonify({"error": "No puedes cancelar esta reserva"}), 403
-            starts_at = datetime.combine(booking[2], booking[3]).replace(tzinfo=BOGOTA)
-            if starts_at < datetime.now(BOGOTA) + timedelta(hours=MIN_CANCELLATION_NOTICE_HOURS):
-                return jsonify({"error": "Solo puedes cancelar hasta 12 horas antes"}), 400
-        else:
-            is_superadmin = session.get("role_level") == 1
-            is_owner_teacher = booking[1] == session.get("user_id")
-            if not is_superadmin and not is_owner_teacher:
-                return jsonify({"error": "No puedes cancelar una clase de otro docente"}), 403
 
-        cursor.execute("DELETE FROM bookings WHERE id = %s", (booking_id,))
-    return jsonify({"message": "Reserva cancelada"}), 200
+            if booking[0] != session.get("student_id"):
+                return jsonify({
+                    "error": "No puedes cancelar esta reserva"
+                }), 403
+
+            starts_at = datetime.combine(
+                booking[2],
+                booking[3]
+            ).replace(tzinfo=BOGOTA)
+
+            if starts_at < datetime.now(BOGOTA) + timedelta(
+                hours=MIN_CANCELLATION_NOTICE_HOURS
+            ):
+                return jsonify({
+                    "error": "Solo puedes cancelar hasta 12 horas antes"
+                }), 400
+
+        else:
+
+            is_superadmin = session.get("role_level") == 1
+
+            is_owner_teacher = (
+                booking[1] == session.get("user_id")
+            )
+
+            if not is_superadmin and not is_owner_teacher:
+                return jsonify({
+                    "error": "No puedes cancelar una clase de otro docente"
+                }), 403
+
+        cancellation_data = {
+            "student_name": booking[4],
+            "student_email": booking[5],
+            "course_name": booking[6],
+            "teacher_name": booking[7],
+            "teacher_email": booking[8],
+            "date": str(booking[2]),
+            "time": str(booking[3])
+        }
+
+        cursor.execute(
+            "DELETE FROM bookings WHERE id = %s",
+            (booking_id,)
+        )
+
+    try:
+
+        if cancellation_data:
+
+            send_student_cancellation_email(
+                student_name=cancellation_data["student_name"],
+                student_email=cancellation_data["student_email"],
+                teacher_name=cancellation_data["teacher_name"],
+                course_name=cancellation_data["course_name"],
+                date=cancellation_data["date"],
+                time=cancellation_data["time"]
+            )
+
+            send_teacher_cancellation_email(
+                teacher_name=cancellation_data["teacher_name"],
+                teacher_email=cancellation_data["teacher_email"],
+                student_name=cancellation_data["student_name"],
+                course_name=cancellation_data["course_name"],
+                date=cancellation_data["date"],
+                time=cancellation_data["time"]
+            )
+
+    except Exception as email_error:
+        logger.exception(
+            f"Error enviando correos de cancelación: {email_error}"
+        )
+
+    return jsonify({
+        "message": "Reserva cancelada"
+    }), 200
 
 
 @app.get("/api/admin/dashboard")
@@ -422,6 +785,68 @@ def add_student():
         return jsonify({"error": "El código o el correo ya están registrados"}), 409
     return jsonify({"message": "Estudiante pre-registrado correctamente"}), 201
 
+@app.get("/api/available-times")
+def available_times():
+
+    teacher_id = request.args.get("teacher_id")
+    date = request.args.get("date")
+
+    if not teacher_id or not date:
+        return jsonify([])
+
+    all_times = [
+        "08:00",
+        "08:30",
+        "09:00",
+        "09:30",
+        "10:00",
+        "10:30",
+        "11:00",
+        "11:30",
+        "12:00",
+        "12:30",
+        "13:00",
+        "13:30",
+        "14:00",
+        "14:30",
+        "15:00",
+        "15:30",
+        "16:00",
+        "16:30",
+        "17:00",
+        "17:30",
+        "18:00",
+        "18:30",
+        "19:00",
+        "19:30",
+        "20:00"
+    ]
+
+    with db_cursor() as cursor:
+
+        cursor.execute("""
+            SELECT TO_CHAR(class_time, 'HH24:MI')
+            FROM bookings
+            WHERE teacher_id = %s
+            AND class_date = %s
+        """,
+        (
+            teacher_id,
+            date
+        ))
+
+        occupied_times = {
+            row[0]
+            for row in cursor.fetchall()
+        }
+
+    available = [
+        time
+        for time in all_times
+        if time not in occupied_times
+    ]
+
+    return jsonify(available)
 
 if __name__ == "__main__":
     app.run(debug=os.getenv("APP_ENV", "development") == "development", port=5000)
