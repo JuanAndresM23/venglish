@@ -1,160 +1,264 @@
-import React, { useState, useEffect } from "react";
-import { Box, Typography, Button, Paper, Switch, FormControlLabel } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import API_URL from "../config";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import { apiFetch } from "../api";
 
-const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const DAYS = [
+  { id: 1, name: "Lunes" },
+  { id: 2, name: "Martes" },
+  { id: 3, name: "Miércoles" },
+  { id: 4, name: "Jueves" },
+  { id: 5, name: "Viernes" },
+  { id: 6, name: "Sábado" },
+  { id: 7, name: "Domingo" },
+];
 
-export default function TeacherSchedule() {
-    const [schedules, setSchedules] = useState(
-        DAYS.map((_, i) => ({
-            day_of_week: i,
-            start_time: "08:00",
-            end_time: "18:00",
-            is_available: false
-        }))
+const TIME_OPTIONS = Array.from({ length: 33 }, (_, index) => {
+  const minutes = 6 * 60 + index * 30;
+  const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
+  const mins = minutes % 60 === 0 ? "00" : "30";
+  return `${hours}:${mins}`;
+});
+
+function TimeSelect({ label, value, onChange }) {
+  return (
+    <FormControl size="small" sx={{ minWidth: 110 }}>
+      <InputLabel>{label}</InputLabel>
+      <Select
+        label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {TIME_OPTIONS.map((time) => (
+          <MenuItem key={time} value={time}>
+            {time}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
+}
+
+export default function TeacherSchedule({ user }) {
+  const isSuperadmin = user?.level === 1;
+
+  const [teachers, setTeachers] = useState([]);
+  const [teacherId, setTeacherId] = useState("");
+  const [blocks, setBlocks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    if (!isSuperadmin) return;
+
+    apiFetch("/api/teachers")
+      .then((data) => setTeachers(Array.isArray(data) ? data : []))
+      .catch((err) => setError(err.message || "No se pudieron cargar los docentes."));
+  }, [isSuperadmin]);
+
+  useEffect(() => {
+    if (isSuperadmin && !teacherId) {
+      setBlocks([]);
+      return;
+    }
+
+    const query = isSuperadmin ? `?teacher_id=${teacherId}` : "";
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    apiFetch(`/api/admin/schedule${query}`)
+      .then((data) => setBlocks(Array.isArray(data) ? data : []))
+      .catch((err) => setError(err.message || "No se pudo cargar el horario."))
+      .finally(() => setLoading(false));
+  }, [isSuperadmin, teacherId]);
+
+  const addBlock = (day) => {
+    setBlocks((current) => [...current, { day, start: "08:00", end: "12:00" }]);
+  };
+
+  const updateBlock = (index, changes) => {
+    setBlocks((current) =>
+      current.map((block, i) => (i === index ? { ...block, ...changes } : block))
     );
-    const [success, setSuccess] = useState("");
-    const navigate = useNavigate();
+  };
 
-    useEffect(() => {
-        fetch(`${API_URL}/api/teacher/schedule`, { credentials: "include" })
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data) && data.length > 0) {
-                    setSchedules(prev => prev.map(day => {
-                        const found = data.find(d => d.day_of_week === day.day_of_week);
-                        return found ? {
-                            ...day,
-                            start_time: found.start_time.slice(0, 5),
-                            end_time: found.end_time.slice(0, 5),
-                            is_available: found.is_available
-                        } : day;
-                    }));
-                }
-            })
-            .catch(err => console.error(err));
-    }, []);
+  const removeBlock = (index) => {
+    setBlocks((current) => current.filter((_, i) => i !== index));
+  };
 
-    const handleChange = (index, field, value) => {
-        setSchedules(prev => prev.map((s, i) => 
-            i === index ? { ...s, [field]: value } : s
-        ));
-    };
+  const handleSave = async () => {
+    setError("");
+    setSuccess("");
 
-    const handleSave = async () => {
-        try {
-            for (const schedule of schedules) {
-                await fetch(`${API_URL}/api/teacher/schedule`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify(schedule)
-                });
-            }
-            setSuccess("¡Horario guardado exitosamente!");
-            setTimeout(() => setSuccess(""), 3000);
-        } catch (err) {
-            console.error(err);
-        }
-    };
+    if (blocks.some((block) => block.start >= block.end)) {
+      setError("La hora de inicio debe ser menor que la hora de fin.");
+      return;
+    }
 
-    return (
-        <Box sx={{ p: 4, maxWidth: "800px", margin: "0 auto" }}>
-            <Typography variant="h4" fontWeight="bold" gutterBottom 
-                sx={{ color: "var(--venglish-pink)" }}>
-                Mi Horario de Disponibilidad
-            </Typography>
-            <Typography variant="body2" color="textSecondary" mb={3}>
-                Configura los días y horas en que estás disponible para dar clases.
-            </Typography>
+    setSaving(true);
 
-            {success && (
-                <Typography sx={{ 
-                    color: "white", backgroundColor: "#43a047", 
-                    borderRadius: "8px", padding: "10px", mb: 2, textAlign: "center" 
-                }}>
-                    ✅ {success}
-                </Typography>
-            )}
+    try {
+      await apiFetch("/api/admin/schedule", {
+        method: "POST",
+        body: JSON.stringify({
+          teacher_id: isSuperadmin ? teacherId : undefined,
+          blocks,
+        }),
+      });
+      setSuccess("Horario guardado correctamente.");
+    } catch (err) {
+      setError(err.message || "No se pudo guardar el horario.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-            {schedules.map((schedule, index) => (
-                <Paper key={index} elevation={2} sx={{ 
-                    p: 3, mb: 2, borderRadius: "15px",
-                    border: schedule.is_available ? "2px solid #43a047" : "2px solid #e0e0e0",
-                    opacity: schedule.is_available ? 1 : 0.7
-                }}>
-                    <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
-                        
-                        <Box display="flex" alignItems="center" gap={2}>
-                            <Typography fontWeight="bold" sx={{ minWidth: "100px" }}>
-                                {DAYS[index]}
-                            </Typography>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={schedule.is_available}
-                                        onChange={e => handleChange(index, "is_available", e.target.checked)}
-                                        sx={{
-                                            "& .MuiSwitch-switchBase.Mui-checked": { color: "#43a047" },
-                                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#43a047" }
-                                        }}
-                                    />
-                                }
-                                label={schedule.is_available ? "Disponible" : "No disponible"}
-                            />
-                        </Box>
+  const indexedBlocks = blocks.map((block, index) => ({ ...block, index }));
+  const canEdit = !isSuperadmin || Boolean(teacherId);
 
-                        {schedule.is_available && (
-                            <Box display="flex" alignItems="center" gap={2}>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary">Desde</Typography>
-                                    <input
-                                        type="time"
-                                        value={schedule.start_time}
-                                        onChange={e => handleChange(index, "start_time", e.target.value)}
-                                        className="custom-mui-input"
-                                        style={{ width: "130px", padding: "8px" }}
-                                    />
-                                </Box>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary">Hasta</Typography>
-                                    <input
-                                        type="time"
-                                        value={schedule.end_time}
-                                        onChange={e => handleChange(index, "end_time", e.target.value)}
-                                        className="custom-mui-input"
-                                        style={{ width: "130px", padding: "8px" }}
-                                    />
-                                </Box>
-                            </Box>
-                        )}
-                    </Box>
-                </Paper>
-            ))}
-
-            <Box display="flex" gap={2} mt={3}>
-                <Button
-                    variant="contained"
-                    onClick={handleSave}
-                    sx={{
-                        background: "var(--venglish-gradient)",
-                        borderRadius: "10px",
-                        fontWeight: "bold",
-                        py: 1.5,
-                        px: 4
-                    }}
-                >
-                    Guardar Horario
-                </Button>
-                <Button
-                    variant="outlined"
-                    onClick={() => navigate("/dashboard")}
-                    sx={{ borderRadius: "10px" }}
-                >
-                    Volver
-                </Button>
-            </Box>
+  return (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: "var(--venglish-bg-gradient)",
+        display: "flex",
+        justifyContent: "center",
+        p: 3,
+      }}
+    >
+      <Paper
+        elevation={4}
+        sx={{
+          p: { xs: 3, md: 5 },
+          borderRadius: "25px",
+          maxWidth: "750px",
+          width: "100%",
+          height: "fit-content",
+          backgroundColor: "rgba(255,255,255,0.95)",
+        }}
+      >
+        <Box display="flex" flexDirection="column" alignItems="center" mb={4}>
+          <ScheduleIcon sx={{ fontSize: 50, color: "var(--venglish-pink)", mb: 1 }} />
+          <Typography variant="h5" fontWeight="bold">
+            {isSuperadmin ? "Horarios de docentes" : "Mi horario"}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            Los estudiantes solo podrán reservar dentro de estos bloques.
+          </Typography>
         </Box>
-    );
+
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+
+        {isSuperadmin && (
+          <FormControl fullWidth sx={{ mb: 4 }}>
+            <InputLabel id="schedule-teacher-label">Docente</InputLabel>
+            <Select
+              labelId="schedule-teacher-label"
+              label="Docente"
+              value={teacherId}
+              onChange={(event) => setTeacherId(event.target.value)}
+            >
+              {teachers.map((teacher) => (
+                <MenuItem key={teacher.id} value={teacher.id}>
+                  {teacher.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        {loading && (
+          <Box display="flex" justifyContent="center" my={4}>
+            <CircularProgress sx={{ color: "var(--venglish-pink)" }} />
+          </Box>
+        )}
+
+        {!loading && canEdit && (
+          <>
+            {DAYS.map((day) => {
+              const dayBlocks = indexedBlocks.filter((block) => block.day === day.id);
+
+              return (
+                <Box
+                  key={day.id}
+                  sx={{ py: 2, borderBottom: "1px solid rgba(255,75,176,0.12)" }}
+                >
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography fontWeight="bold">{day.name}</Typography>
+                    <Button
+                      size="small"
+                      startIcon={<AddIcon />}
+                      onClick={() => addBlock(day.id)}
+                      sx={{ color: "var(--venglish-pink)", textTransform: "none" }}
+                    >
+                      Agregar bloque
+                    </Button>
+                  </Box>
+
+                  {dayBlocks.length === 0 && (
+                    <Typography variant="body2" color="text.secondary" mt={1}>
+                      No disponible
+                    </Typography>
+                  )}
+
+                  {dayBlocks.map((block) => (
+                    <Box key={block.index} display="flex" alignItems="center" gap={2} mt={2}>
+                      <TimeSelect
+                        label="Desde"
+                        value={block.start}
+                        onChange={(value) => updateBlock(block.index, { start: value })}
+                      />
+                      <TimeSelect
+                        label="Hasta"
+                        value={block.end}
+                        onChange={(value) => updateBlock(block.index, { end: value })}
+                      />
+                      <IconButton color="error" onClick={() => removeBlock(block.index)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Box>
+              );
+            })}
+
+            <Button
+              fullWidth
+              variant="contained"
+              disabled={saving}
+              onClick={handleSave}
+              sx={{
+                mt: 4,
+                py: 1.5,
+                borderRadius: "12px",
+                background: "var(--venglish-gradient)",
+                fontWeight: "bold",
+              }}
+            >
+              {saving ? "Guardando..." : "Guardar horario"}
+            </Button>
+          </>
+        )}
+      </Paper>
+    </Box>
+  );
 }
