@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@fullcalendar/timegrid": "^6.1.21",
     "bootstrap": "^5.3.8"
   }
 }

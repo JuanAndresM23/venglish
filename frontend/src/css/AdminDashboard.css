@@ -1,78 +1,237 @@
-/* ==========================================================================
-   1. Contenedor principal con TU fondo nuevo 
-   ========================================================================== */
-
-/* 1. Contenedor principal con TU fondo nuevo */
 .admin-page-wrapper {
   min-height: 100vh;
   width: 100%;
-  padding: 40px 15px;
+  padding: 40px 24px 70px;
+  box-sizing: border-box;
   background: var(--venglish-bg-gradient);
   background-attachment: fixed;
-  background-size: cover;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* 2. Título con el rosa de Victoria */
-.admin-title {
-  color: var(--venglish-pink);
-  font-family: 'Segoe UI', Roboto, sans-serif;
-  font-weight: 800;
-  margin-bottom: 30px;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-/* 3. La Tarjeta del calendario */
-.calendar-card {
-  background: #ffffff; 
-  padding: 25px;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(255, 75, 176, 0.15);
-  max-width: 1100px;
+.admin-header {
   width: 100%;
-  border: 2px solid rgba(255, 219, 88, 0.3);
+  max-width: 1100px;
+  margin-bottom: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
 }
 
-/* 4. Estilos para FullCalendar */
-.fc .fc-toolbar-title {
+.admin-title {
+  margin: 0 !important;
+  font-size: clamp(1.8rem, 4vw, 2.7rem) !important;
+  font-weight: 800 !important;
+  background: var(--venglish-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+}
+
+.admin-subtitle {
+  margin-top: 8px !important;
+  color: var(--venglish-gray);
+}
+
+.admin-stats-grid {
+  width: 100%;
+  max-width: 1100px;
+  margin-bottom: 34px !important;
+}
+
+.admin-stat-card {
+  min-height: 130px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border-radius: 22px !important;
+  color: white !important;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12) !important;
+  transition: 0.25s ease;
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.admin-stat-icon {
+  width: 55px;
+  height: 55px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-stat-icon svg {
+  font-size: 32px;
+  color: white;
+}
+
+.admin-stat-label {
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-weight: 600 !important;
+}
+
+.admin-stat-value {
+  color: white !important;
+  font-weight: 800 !important;
+  margin-top: 4px !important;
+}
+
+.calendar-section-header {
+  width: 100%;
+  max-width: 1100px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.calendar-card {
+  width: 100%;
+  max-width: 1100px;
+  padding: 25px;
+  border-radius: 22px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 14px 40px rgba(255, 75, 176, 0.12) !important;
+  border: 1px solid rgba(255, 75, 176, 0.1);
+}
+
+.admin-loading {
+  min-height: 65vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+}
+
+.fc {
+  font-family: inherit;
+}
+
+.fc-toolbar {
+  margin-bottom: 20px !important;
+}
+
+.fc-toolbar-title {
   color: var(--venglish-black);
-  font-size: 1.5rem !important;
-  font-weight: 700;
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
 }
 
 .fc .fc-button-primary {
   background: var(--venglish-gradient) !important;
   border: none !important;
-  border-radius: 8px !important;
-  font-weight: 600;
-  transition: opacity 0.3s ease;
+  border-radius: 10px !important;
+  box-shadow: 0 5px 15px rgba(255, 75, 176, 0.25);
 }
 
 .fc .fc-button-primary:hover {
-  opacity: 0.8;
-  transform: scale(1.02);
+  opacity: 0.9;
+}
+
+.fc .fc-button-primary:focus {
+  box-shadow: none !important;
+}
+
+.fc .fc-day-today {
+  background: rgba(255, 75, 176, 0.08) !important;
 }
 
 .fc-event {
-  background-color: var(--venglish-pink) !important;
   border: none !important;
-  padding: 5px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  border-radius: 6px !important;
+  border-radius: 8px !important;
+  padding: 3px 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .fc .fc-daygrid-day-number {
   color: var(--venglish-black);
-  font-weight: 500;
-  padding: 8px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.fc .fc-col-header-cell-cushion {
+  color: var(--venglish-black);
+  font-weight: 700;
   text-decoration: none;
 }
 
 .fc-daygrid-day:hover {
-  background-color: rgba(255, 219, 88, 0.1) !important;
+  background: rgba(255, 219, 88, 0.06);
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: rgba(255, 75, 176, 0.12) !important;
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  border-color: rgba(255, 75, 176, 0.12) !important;
+}
+
+.fc-timegrid-slot {
+  height: 2.5rem;
+}
+
+.fc-timegrid-axis {
+  font-weight: 600;
+}
+
+.fc-timegrid-event {
+  border-radius: 8px !important;
+}
+
+.fc-timegrid-event .fc-event-main {
+  padding: 4px;
+}
+
+@media (max-width: 900px) {
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .calendar-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .calendar-card {
+    padding: 15px;
+  }
+
+  .fc-toolbar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-page-wrapper {
+    padding: 20px 10px 40px;
+  }
+
+  .admin-stat-card {
+    min-height: 100px;
+    padding: 18px;
+  }
+
+  .admin-stat-value {
+    font-size: 1.8rem !important;
+  }
+
+  .calendar-card {
+    overflow-x: auto;
+  }
 }

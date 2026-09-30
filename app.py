@@ -288,18 +288,6 @@ def reset_password():
     return jsonify({
         "message": "Contraseña actualizada correctamente"
     }), 200
-        
-    cursor.execute("""
-            UPDATE password_reset_tokens
-            SET used = TRUE
-            WHERE id = %s
-        """,
-        (reset[0],))
-
-    return jsonify({
-        "message": "Contraseña actualizada correctamente"
-    }), 200
-
 
 @app.post("/api/student_register")
 def student_register():
@@ -787,7 +775,6 @@ def add_student():
 
 @app.get("/api/available-times")
 def available_times():
-
     teacher_id = request.args.get("teacher_id")
     date = request.args.get("date")
 
@@ -795,58 +782,101 @@ def available_times():
         return jsonify([])
 
     all_times = [
-        "08:00",
-        "08:30",
-        "09:00",
-        "09:30",
-        "10:00",
-        "10:30",
-        "11:00",
-        "11:30",
-        "12:00",
-        "12:30",
-        "13:00",
-        "13:30",
-        "14:00",
-        "14:30",
-        "15:00",
-        "15:30",
-        "16:00",
-        "16:30",
-        "17:00",
-        "17:30",
+        "08:00", "08:30", "09:00", "09:30",
+        "10:00", "10:30", "11:00", "11:30",
+        "12:00", "12:30", "13:00", "13:30",
+        "14:00", "14:30", "15:00", "15:30",
+        "16:00", "16:30", "17:00", "17:30",
         "18:00",
-        "18:30",
-        "19:00",
-        "19:30",
-        "20:00"
     ]
 
     with db_cursor() as cursor:
-
         cursor.execute("""
             SELECT TO_CHAR(class_time, 'HH24:MI')
             FROM bookings
             WHERE teacher_id = %s
-            AND class_date = %s
-        """,
-        (
-            teacher_id,
-            date
-        ))
+              AND class_date = %s
+        """, (teacher_id, date))
+        rows = cursor.fetchall()
 
-        occupied_times = {
-            row[0]
-            for row in cursor.fetchall()
-        }
+    occupied_times = set()
 
-    available = [
-        time
-        for time in all_times
-        if time not in occupied_times
-    ]
+    for row in rows:
+        booked_time = row[0]
+        occupied_times.add(booked_time)
+
+        dt = datetime.strptime(booked_time, "%H:%M")
+        next_slot = (dt + timedelta(minutes=30)).strftime("%H:%M")
+        occupied_times.add(next_slot)
+
+    available = [t for t in all_times if t not in occupied_times]
 
     return jsonify(available)
+
+@app.get("/api/admin/stats")
+@admin_required
+def admin_stats():
+    current_admin_id = session.get("user_id")
+    is_superadmin = session.get("role_level") == 1
+
+    with db_cursor() as cursor:
+        if is_superadmin:
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM students
+            """)
+            total_students = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM admins
+                WHERE role_level = 0
+            """)
+            total_teachers = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM bookings
+                WHERE class_date >= CURRENT_DATE
+            """)
+            upcoming_bookings = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM bookings
+                WHERE class_date >= CURRENT_DATE
+                  AND class_date < CURRENT_DATE + INTERVAL '7 days'
+            """)
+            week_bookings = cursor.fetchone()[0]
+
+        else:
+            total_students = None
+            total_teachers = None
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM bookings
+                WHERE teacher_id = %s
+                  AND class_date >= CURRENT_DATE
+            """, (current_admin_id,))
+            upcoming_bookings = cursor.fetchone()[0]
+
+            cursor.execute("""
+                SELECT COUNT(*)
+                FROM bookings
+                WHERE teacher_id = %s
+                  AND class_date >= CURRENT_DATE
+                  AND class_date < CURRENT_DATE + INTERVAL '7 days'
+            """, (current_admin_id,))
+            week_bookings = cursor.fetchone()[0]
+
+    return jsonify({
+        "is_superadmin": is_superadmin,
+        "students": total_students,
+        "teachers": total_teachers,
+        "upcoming_bookings": upcoming_bookings,
+        "week_bookings": week_bookings
+    }), 200
 
 if __name__ == "__main__":
     app.run(debug=os.getenv("APP_ENV", "development") == "development", port=5000)
