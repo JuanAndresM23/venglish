@@ -10,15 +10,25 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AddStudent from "./pages/AddStudent";
 import ListStudents from "./pages/ListStudents";
-import Navbar from "./components/Navbar/Navbar";
-import "./css/App.css";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import TeacherSchedule from "./pages/TeacherSchedule";
+import Navbar from "./components/Navbar/Navbar";
+import "./css/App.css";
 
 function RequireAuth({ user, role, level, children }) {
-  if (!user?.is_logged_in) return <Navigate to={role === "admin" ? "/admin-login" : "/login"} replace />;
-  if (role && user.role !== role) return <Navigate to="/dashboard" replace />;
-  if (level !== undefined && user.level !== level) return <Navigate to="/dashboard" replace />;
+  if (!user?.is_logged_in) {
+    return <Navigate to={role === "admin" ? "/admin-login" : "/login"} replace />;
+  }
+
+  if (role && user.role !== role) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (level !== undefined && user.level !== level) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return children;
 }
 
@@ -33,24 +43,79 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="loading">Cargando VEnglish...</div>;
+  if (loading) {
+    return <div className="loading">Cargando VEnglish...</div>;
+  }
 
   return (
     <BrowserRouter>
       <Navbar user={user} setUser={setUser} />
+
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/forgot-password" element={<ForgotPassword />}/>
-        <Route path="/reset-password" element={<ResetPassword />}/>
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/student-register" element={<StudentRegister />} />
-        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <StudentLogin setUser={setUser} />} />
-        <Route path="/admin-login" element={user ? <Navigate to="/dashboard" replace /> : <AdminLogin setUser={setUser} />} />
-        <Route path="/dashboard" element={
-          <RequireAuth user={user}>{user?.role === "admin" ? <AdminDashboard /> : <StudentDashboard />}</RequireAuth>
-        } />
-        <Route path="/reserve" element={<RequireAuth user={user} role="student"><ReserveClass /></RequireAuth>} />
-        <Route path="/add-student" element={<RequireAuth user={user} role="admin" level={1}><AddStudent /></RequireAuth>} />
-        <Route path="/list-students" element={<RequireAuth user={user} role="admin" level={1}><ListStudents /></RequireAuth>} />
+
+        <Route
+          path="/login"
+          element={
+            user ? <Navigate to="/dashboard" replace /> : <StudentLogin setUser={setUser} />
+          }
+        />
+
+        <Route
+          path="/admin-login"
+          element={
+            user ? <Navigate to="/dashboard" replace /> : <AdminLogin setUser={setUser} />
+          }
+        />
+
+        <Route
+          path="/dashboard"
+          element={
+            <RequireAuth user={user}>
+              {user?.role === "admin" ? <AdminDashboard /> : <StudentDashboard />}
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/reserve"
+          element={
+            <RequireAuth user={user} role="student">
+              <ReserveClass />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/schedule"
+          element={
+            <RequireAuth user={user} role="admin">
+              <TeacherSchedule user={user} />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/add-student"
+          element={
+            <RequireAuth user={user} role="admin" level={1}>
+              <AddStudent />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/list-students"
+          element={
+            <RequireAuth user={user} role="admin" level={1}>
+              <ListStudents />
+            </RequireAuth>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
