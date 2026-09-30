@@ -70,7 +70,7 @@ def superadmin_required(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         if session.get("role") != "admin" or session.get("role_level") != 1:
-            return jsonify({"error": "Acceso exclusivo de superadministraciÃ³n"}), 403
+            return jsonify({"error": "Acceso exclusivo de superadministración"}), 403
         return func(*args, **kwargs)
     return wrapped
 
@@ -105,7 +105,7 @@ def internal_error(error):
 @app.post("/api/logout")
 def logout():
     session.clear()
-    return jsonify({"message": "SesiÃ³n cerrada"}), 200
+    return jsonify({"message": "Sesión cerrada"}), 200
 
 
 @app.get("/api/me")
@@ -135,7 +135,7 @@ def student_login():
     student_code = clean_text(data.get("student_code"), 50).upper()
     password = str(data.get("password") or "")
     if not student_code or not password:
-        return jsonify({"error": "CÃ³digo y contraseÃ±a son requeridos"}), 400
+        return jsonify({"error": "Código y contraseña son requeridos"}), 400
 
     with db_cursor() as cursor:
         cursor.execute(
@@ -145,7 +145,7 @@ def student_login():
         student = cursor.fetchone()
 
     if not student or not student[2] or not check_password_hash(student[2], password):
-        return jsonify({"error": "CÃ³digo o contraseÃ±a incorrectos"}), 401
+        return jsonify({"error": "Código o contraseña incorrectos"}), 401
 
     session.clear()
     session.permanent = True
@@ -234,7 +234,7 @@ def reset_password():
 
     if not token or not new_password:
         return jsonify({
-            "error": "Token y contraseÃ±a requeridos"
+            "error": "Token y contraseña requeridos"
         }), 400
 
     with db_cursor(commit=True) as cursor:
@@ -253,7 +253,7 @@ def reset_password():
 
         if not reset:
             return jsonify({
-                "error": "Token invÃ¡lido"
+                "error": "Token inválido"
             }), 400
 
         if reset[3]:
@@ -286,7 +286,7 @@ def reset_password():
         ))
 
     return jsonify({
-        "message": "ContraseÃ±a actualizada correctamente"
+        "message": "Contraseña actualizada correctamente"
     }), 200
 
 @app.post("/api/student_register")
@@ -295,9 +295,9 @@ def student_register():
     student_code = clean_text(data.get("student_code"), 50).upper()
     password = str(data.get("password") or "")
     if not student_code or not password:
-        return jsonify({"error": "CÃ³digo y contraseÃ±a son requeridos"}), 400
+        return jsonify({"error": "Código y contraseña son requeridos"}), 400
     if len(password) < 10:
-        return jsonify({"error": "La contraseÃ±a debe tener al menos 10 caracteres"}), 400
+        return jsonify({"error": "La contraseña debe tener al menos 10 caracteres"}), 400
 
     with db_cursor(commit=True) as cursor:
         cursor.execute(
@@ -306,14 +306,14 @@ def student_register():
         )
         student = cursor.fetchone()
         if not student:
-            return jsonify({"error": "Este cÃ³digo no existe en el sistema"}), 404
+            return jsonify({"error": "Este código no existe en el sistema"}), 404
         if student[1]:
-            return jsonify({"error": "Este cÃ³digo ya fue utilizado"}), 409
+            return jsonify({"error": "Este código ya fue utilizado"}), 409
         cursor.execute(
             "UPDATE students SET password = %s WHERE id = %s",
             (generate_password_hash(password), student[0]),
         )
-    return jsonify({"message": "Cuenta activada. Ya puedes iniciar sesiÃ³n"}), 200
+    return jsonify({"message": "Cuenta activada. Ya puedes iniciar sesión"}), 200
 
 
 @app.post("/api/admin_login")
@@ -322,7 +322,7 @@ def admin_login():
     username = clean_text(data.get("username"), 100)
     password = str(data.get("password") or "")
     if not username or not password:
-        return jsonify({"error": "Usuario y contraseÃ±a son requeridos"}), 400
+        return jsonify({"error": "Usuario y contraseña son requeridos"}), 400
 
     with db_cursor() as cursor:
         cursor.execute(
@@ -332,7 +332,7 @@ def admin_login():
         admin = cursor.fetchone()
 
     if not admin or not check_password_hash(admin[2], password):
-        return jsonify({"error": "Credenciales invÃ¡lidas"}), 401
+        return jsonify({"error": "Credenciales inválidas"}), 401
 
     session.clear()
     session.permanent = True
@@ -408,7 +408,7 @@ def reserve():
 
     if requested_at < datetime.now(BOGOTA) + timedelta(hours=MIN_BOOKING_NOTICE_HOURS):
         return jsonify({
-            "error": "Debes reservar con mÃ­nimo 48 horas de anticipaciÃ³n"
+            "error": "Debes reservar con mínimo 48 horas de anticipación"
         }), 400
 
     class_end = requested_at + timedelta(minutes=CLASS_DURATION_MINUTES)
@@ -427,7 +427,7 @@ def reserve():
 
             if not cursor.fetchone():
                 return jsonify({
-                    "error": "Curso invÃ¡lido"
+                    "error": "Curso inválido"
                 }), 400
 
             cursor.execute(
@@ -437,7 +437,7 @@ def reserve():
 
             if not cursor.fetchone():
                 return jsonify({
-                    "error": "Profesor invÃ¡lido"
+                    "error": "Profesor inválido"
                 }), 400
 
             cursor.execute("""
@@ -475,7 +475,7 @@ def reserve():
 
             if cursor.fetchone():
                 return jsonify({
-                    "error": "El profesor ya estÃ¡ ocupado en ese horario"
+                    "error": "El profesor ya está ocupado en ese horario"
                 }), 409
 
             cursor.execute("""
@@ -699,7 +699,7 @@ def cancel_booking(booking_id):
 
     except Exception as email_error:
         logger.exception(
-            f"Error enviando correos de cancelaciÃ³n: {email_error}"
+            f"Error enviando correos de cancelación: {email_error}"
         )
 
     return jsonify({
@@ -761,7 +761,7 @@ def add_student():
     email = clean_text(data.get("email"), 254).lower()
     student_code = clean_text(data.get("student_code"), 50).upper()
     if not name or not student_code:
-        return jsonify({"error": "Nombre y cÃ³digo son obligatorios"}), 400
+        return jsonify({"error": "Nombre y código son obligatorios"}), 400
 
     try:
         with db_cursor(commit=True) as cursor:
@@ -770,7 +770,7 @@ def add_student():
                 VALUES (%s, %s, %s, %s)
             """, (name, phone, email or None, student_code))
     except IntegrityError:
-        return jsonify({"error": "El cÃ³digo o el correo ya estÃ¡n registrados"}), 409
+        return jsonify({"error": "El código o el correo ya están registrados"}), 409
     return jsonify({"message": "Estudiante pre-registrado correctamente"}), 201
 
 

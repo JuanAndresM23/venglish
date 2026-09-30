@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiFetch } from "../../api";
 import logo from "../../assets/venglish.jpeg";
-import { Box } from "@mui/material";
 import "./Navbar.css";
 
 export default function Navbar({ user, setUser }) {
@@ -16,21 +15,29 @@ export default function Navbar({ user, setUser }) {
   };
 
   return (
-    <nav className="navbar" aria-label="Navegación principal">
-           <Link to="/" onClick={closeMenu}>
-        {logo}
-      </Link>
+<nav className="navbar" aria-label="Navegación principal">
 
-      <button
-        className="menu-toggle"
-        onClick={() => setIsOpen((v) => !v)}
-        aria-expanded={isOpen}
-        aria-label="Abrir menú"
-      >
-        {[1, 2, 3].map((i) => (
-          <span key={i} className={`bar ${isOpen ? "open" : ""}`} />
-        ))}
-      </button>
+  <Link to="/" onClick={closeMenu}>
+   <img
+src={logo}
+alt="VEnglish Academy"
+className="nav-logo"
+          />
+  </Link>
+
+  <button
+    className="menu-toggle"
+    onClick={() => setIsOpen((v) => !v)}
+    aria-expanded={isOpen}
+    aria-label="Abrir menú"
+  >
+    {[1, 2, 3].map((i) => (
+      <span
+        key={i}
+        className={`bar ${isOpen ? "open" : ""}`}
+      />
+    ))}
+  </button>
 
       <div className={`nav-links ${isOpen ? "active" : ""}`}>
         {!user && (
