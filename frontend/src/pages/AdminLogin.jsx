@@ -33,7 +33,7 @@ export default function AdminLogin({ setUser }) {
         
         console.log("1. Login exitoso. Verificando sesión...");
         
-        const userRes = await fetch("http://localhost:5000/api/me", { 
+        const userRes = await fetch(`${API_URL}/api/me`, {
           credentials: "include" 
         });
         
