@@ -75,7 +75,9 @@ def admin_login():
 
 @auth_bp.post("/forgot_password")
 def forgot_password():
-    message = auth_service.forgot_password(json_body().get("email"))
+    data = json_body()
+    audience = "admin" if data.get("type") == "admin" else "student"
+    message = auth_service.forgot_password(data.get("email"), audience, data.get("username"))
     return jsonify({"message": message}), 200
 
 

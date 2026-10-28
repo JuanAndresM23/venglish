@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from app.constants import (
+    ALLOWED_DURATIONS,
     BOGOTA,
     CLASS_DURATION_MINUTES,
     MIN_BOOKING_NOTICE_HOURS,
@@ -36,8 +37,40 @@ def valid_half_hour(value):
     return parsed.minute in (0, 30)
 
 
-def get_available_times(teacher_id, date_text):
-    if not teacher_id or not date_text:
+def available_slots(cursor, teacher_id, day, duration_minutes=CLASS_DURATION_MINUTES):
+    """Horas de inicio libres del docente en `day` para una clase de `duration_minutes`."""
+    ranges = schedule_model.get_ranges_for_day(cursor, teacher_id, day.isoweekday())
+    booked = booking_model.booked_times(cursor, teacher_id, day)
+
+    duration = timedelta(minutes=duration_minutes)
+    min_start = datetime.now(BOGOTA) + timedelta(hours=MIN_BOOKING_NOTICE_HOURS)
+    booked_ranges = [
+        (
+            datetime.strptime(start, "%H:%M"),
+            datetime.strptime(start, "%H:%M") + timedelta(minutes=minutes),
+        )
+        for start, minutes in booked
+    ]
+
+    available = []
+    for slot in build_slots(ranges, duration_minutes):
+        slot_start = datetime.strptime(slot, "%H:%M")
+        slot_end = slot_start + duration
+
+        overlaps = any(
+            slot_start < booked_end and slot_end > booked_start
+            for booked_start, booked_end in booked_ranges
+        )
+        slot_datetime = datetime.combine(day, slot_start.time()).replace(tzinfo=BOGOTA)
+
+        if not overlaps and slot_datetime >= min_start:
+            available.append(slot)
+
+    return available
+
+
+def get_available_times(teacher_id, date_text, duration_minutes=CLASS_DURATION_MINUTES):
+    if not teacher_id or not date_text or duration_minutes not in ALLOWED_DURATIONS:
         return []
 
     try:
@@ -46,28 +79,7 @@ def get_available_times(teacher_id, date_text):
         return []
 
     with db_cursor() as cursor:
-        ranges = schedule_model.get_ranges_for_day(cursor, teacher_id, day.isoweekday())
-        booked = booking_model.booked_times(cursor, teacher_id, day)
-
-    duration = timedelta(minutes=CLASS_DURATION_MINUTES)
-    min_start = datetime.now(BOGOTA) + timedelta(hours=MIN_BOOKING_NOTICE_HOURS)
-    booked_starts = [datetime.strptime(value, "%H:%M") for value in booked]
-
-    available = []
-    for slot in build_slots(ranges):
-        slot_start = datetime.strptime(slot, "%H:%M")
-        slot_end = slot_start + duration
-
-        overlaps = any(
-            slot_start < start + duration and slot_end > start
-            for start in booked_starts
-        )
-        slot_datetime = datetime.combine(day, slot_start.time()).replace(tzinfo=BOGOTA)
-
-        if not overlaps and slot_datetime >= min_start:
-            available.append(slot)
-
-    return available
+        return available_slots(cursor, teacher_id, day, duration_minutes)
 
 
 def get_schedule(teacher_id):

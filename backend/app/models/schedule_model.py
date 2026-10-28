@@ -16,8 +16,8 @@ def list_blocks(cursor, teacher_id):
     cursor.execute(
         """
         SELECT day_of_week,
-               TO_CHAR(start_time, 'HH24:MI'),
-               TO_CHAR(end_time, 'HH24:MI')
+               TIME_FORMAT(start_time, '%%H:%%i'),
+               TIME_FORMAT(end_time, '%%H:%%i')
         FROM teacher_schedules
         WHERE teacher_id = %s
           AND COALESCE(is_available, TRUE)

@@ -1,7 +1,21 @@
 from contextlib import contextmanager
+from datetime import time
+from urllib.parse import unquote, urlparse
 
-import psycopg2
+import pymysql
 from flask import current_app
+from pymysql.constants import FIELD_TYPE
+from pymysql.converters import conversions
+
+
+def _time_as_time(value):
+    # MySQL TIME llega como timedelta; el resto del código espera datetime.time.
+    seconds = int(value.total_seconds()) % 86400
+    return time(seconds // 3600, seconds % 3600 // 60, seconds % 60)
+
+
+_decode_timedelta = conversions[FIELD_TYPE.TIME]
+_CONVERSIONS = {**conversions, FIELD_TYPE.TIME: lambda raw: _time_as_time(_decode_timedelta(raw))}
 
 
 def init_db(app):
@@ -10,7 +24,17 @@ def init_db(app):
 
 
 def get_connection():
-    return psycopg2.connect(current_app.config["DATABASE_URL"], connect_timeout=10)
+    url = urlparse(current_app.config["DATABASE_URL"])
+    return pymysql.connect(
+        host=url.hostname or "localhost",
+        port=url.port or 3306,
+        user=unquote(url.username or ""),
+        password=unquote(url.password or ""),
+        database=url.path.lstrip("/"),
+        charset="utf8mb4",
+        connect_timeout=10,
+        conv=_CONVERSIONS,
+    )
 
 
 @contextmanager

@@ -1,6 +1,6 @@
 _OVERLAP = """
-    AND (class_date + class_time) < %s
-    AND (class_date + class_time + INTERVAL '60 minutes') > %s
+    AND TIMESTAMP(class_date, class_time) < %s
+    AND TIMESTAMP(class_date, class_time) + INTERVAL duration_minutes MINUTE > %s
 """
 
 
@@ -20,16 +20,17 @@ def find_teacher_overlap(cursor, teacher_id, class_end, class_start):
     return cursor.fetchone()
 
 
-def create(cursor, course_id, student_id, teacher_id, class_date, class_time):
+def create(cursor, course_id, student_id, teacher_id, class_date, class_time, duration_minutes):
     cursor.execute(
         """
-        INSERT INTO bookings (course_id, student_id, teacher_id, class_date, class_time)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id
+        INSERT INTO bookings (
+            course_id, student_id, teacher_id, class_date, class_time, duration_minutes
+        )
+        VALUES (%s, %s, %s, %s, %s, %s)
         """,
-        (course_id, student_id, teacher_id, class_date, class_time),
+        (course_id, student_id, teacher_id, class_date, class_time, duration_minutes),
     )
-    return cursor.fetchone()[0]
+    return cursor.lastrowid
 
 
 def get_reservation_contacts(cursor, course_id, teacher_id, student_id):
@@ -51,7 +52,7 @@ def list_by_student(cursor, student_id):
     cursor.execute(
         """
         SELECT b.id, c.course_name, b.class_date, b.class_time,
-               COALESCE(a.full_name, a.username)
+               COALESCE(a.full_name, a.username), b.duration_minutes
         FROM bookings b
         JOIN courses c ON b.course_id = c.id
         JOIN admins a ON b.teacher_id = a.id
@@ -68,7 +69,7 @@ def get_for_cancellation(cursor, booking_id):
         """
         SELECT b.student_id, b.teacher_id, b.class_date, b.class_time,
                s.name, s.email, c.course_name,
-               COALESCE(a.full_name, a.username), a.email
+               COALESCE(a.full_name, a.username), a.email, b.duration_minutes
         FROM bookings b
         JOIN students s ON b.student_id = s.id
         JOIN courses c ON b.course_id = c.id
@@ -88,7 +89,7 @@ def delete(cursor, booking_id):
 def list_for_dashboard(cursor, teacher_id=None):
     query = """
         SELECT b.id, s.name, c.course_name, b.class_date, b.class_time,
-               COALESCE(a.full_name, a.username)
+               COALESCE(a.full_name, a.username), b.duration_minutes
         FROM bookings b
         JOIN students s ON b.student_id = s.id
         JOIN courses c ON b.course_id = c.id
@@ -117,7 +118,7 @@ def count_next_week(cursor, teacher_id=None):
     query = """
         SELECT COUNT(*) FROM bookings
         WHERE class_date >= CURRENT_DATE
-          AND class_date < CURRENT_DATE + INTERVAL '7 days'
+          AND class_date < CURRENT_DATE + INTERVAL 7 DAY
     """
     params = ()
     if teacher_id is not None:
@@ -130,10 +131,15 @@ def count_next_week(cursor, teacher_id=None):
 def booked_times(cursor, teacher_id, day):
     cursor.execute(
         """
-        SELECT TO_CHAR(class_time, 'HH24:MI')
+        SELECT TIME_FORMAT(class_time, '%%H:%%i'), duration_minutes
         FROM bookings
         WHERE teacher_id = %s AND class_date = %s
         """,
         (teacher_id, day),
     )
-    return [row[0] for row in cursor.fetchall()]
+    return [(row[0], row[1]) for row in cursor.fetchall()]
+
+
+def count_by_student(cursor, student_id):
+    cursor.execute("SELECT COUNT(*) FROM bookings WHERE student_id = %s", (student_id,))
+    return cursor.fetchone()[0]

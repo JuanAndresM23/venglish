@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 
-from app.constants import LEVEL_SUPERADMIN
+from app.constants import CLASS_DURATION_MINUTES, LEVEL_SUPERADMIN
 from app.services import schedule_service
 from app.utils.decorators import admin_required
 from app.utils.http import json_body
@@ -22,7 +22,8 @@ def _schedule_teacher_id(source):
 def available_times():
     teacher_id = request.args.get("teacher_id", type=int)
     date_text = request.args.get("date")
-    return jsonify(schedule_service.get_available_times(teacher_id, date_text))
+    duration = request.args.get("duration", default=CLASS_DURATION_MINUTES, type=int)
+    return jsonify(schedule_service.get_available_times(teacher_id, date_text, duration))
 
 
 @schedule_bp.get("/admin/schedule")

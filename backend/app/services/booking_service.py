@@ -1,9 +1,10 @@
 import logging
 from datetime import datetime, timedelta
 
-from psycopg2 import IntegrityError
+from pymysql import IntegrityError
 
 from app.constants import (
+    ALLOWED_DURATIONS,
     BOGOTA,
     CLASS_DURATION_MINUTES,
     LEVEL_SUPERADMIN,
@@ -13,7 +14,7 @@ from app.constants import (
 )
 from app.database import db_cursor
 from app.models import admin_model, booking_model, course_model
-from app.services import email_service
+from app.services import email_service, schedule_service
 from app.utils.dates import parse_class_datetime
 from app.utils.errors import ServiceError
 from app.utils.http import clean_text
@@ -43,6 +44,7 @@ def list_student_classes(student_id):
             "date": str(row[2]),
             "time": str(row[3]),
             "teacher": row[4],
+            "duration": row[5],
         }
         for row in rows
     ]
@@ -53,6 +55,12 @@ def create_booking(student_id, data):
     teacher_id = data.get("teacher_id")
     date_text = clean_text(data.get("date"), 10)
     time_text = clean_text(data.get("time"), 5)
+    try:
+        duration = int(data.get("duration", CLASS_DURATION_MINUTES))
+    except (TypeError, ValueError):
+        duration = None
+    if duration not in ALLOWED_DURATIONS:
+        raise ServiceError("Duración de clase inválida", 400)
 
     requested_at = parse_class_datetime(date_text, time_text)
     if not all([course_id, teacher_id, date_text, time_text]) or requested_at is None:
@@ -62,7 +70,7 @@ def create_booking(student_id, data):
         raise ServiceError("Debes reservar con mínimo 48 horas de anticipación", 400)
 
     class_start = requested_at.replace(tzinfo=None)
-    class_end = (requested_at + timedelta(minutes=CLASS_DURATION_MINUTES)).replace(tzinfo=None)
+    class_end = (requested_at + timedelta(minutes=duration)).replace(tzinfo=None)
 
     try:
         with db_cursor(commit=True) as cursor:
@@ -71,13 +79,20 @@ def create_booking(student_id, data):
             if not admin_model.teacher_exists(cursor, teacher_id):
                 raise ServiceError("Profesor inválido", 400)
 
+            if time_text not in schedule_service.available_slots(
+                cursor, teacher_id, requested_at.date(), duration
+            ):
+                raise ServiceError(
+                    "El profesor no está disponible en ese horario para la duración elegida", 409
+                )
+
             if booking_model.find_student_overlap(cursor, student_id, class_end, class_start):
                 raise ServiceError("Ya tienes una clase que se cruza con ese horario", 409)
             if booking_model.find_teacher_overlap(cursor, teacher_id, class_end, class_start):
                 raise ServiceError("El profesor ya está ocupado en ese horario", 409)
 
             booking_id = booking_model.create(
-                cursor, course_id, student_id, teacher_id, date_text, time_text
+                cursor, course_id, student_id, teacher_id, date_text, time_text, duration
             )
             contacts = booking_model.get_reservation_contacts(
                 cursor, course_id, teacher_id, student_id
@@ -90,7 +105,7 @@ def create_booking(student_id, data):
         logger.exception("Error creando reserva")
         raise ServiceError("No fue posible crear la reserva", 500)
 
-    _notify_booking(contacts, date_text, time_text)
+    _notify_booking(contacts, date_text, _time_range(time_text, duration))
     return booking_id
 
 
@@ -144,8 +159,28 @@ def _notify_booking(contacts, date_text, time_text):
         logger.exception("Error enviando correos de reserva")
 
 
+def format_duration(minutes):
+    hours, rest = divmod(minutes, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours} h")
+    if rest:
+        parts.append(f"{rest} min")
+    return " ".join(parts)
+
+
+def _time_range(start_text, minutes):
+    start = datetime.strptime(start_text, "%H:%M")
+    end = start + timedelta(minutes=minutes)
+    return f"{start:%H:%M} - {end:%H:%M} ({format_duration(minutes)})"
+
+
 def _notify_cancellation(booking):
-    _, _, class_date, class_time, student_name, student_email, course_name, teacher_name, teacher_email = booking
+    (
+        _, _, class_date, class_time, student_name, student_email,
+        course_name, teacher_name, teacher_email, duration,
+    ) = booking
+    time_range = _time_range(f"{class_time:%H:%M}", duration)
     try:
         email_service.send_student_cancellation_email(
             student_name=student_name,
@@ -153,7 +188,7 @@ def _notify_cancellation(booking):
             teacher_name=teacher_name,
             course_name=course_name,
             date=str(class_date),
-            time=str(class_time),
+            time=time_range,
         )
         email_service.send_teacher_cancellation_email(
             teacher_name=teacher_name,
@@ -161,7 +196,7 @@ def _notify_cancellation(booking):
             student_name=student_name,
             course_name=course_name,
             date=str(class_date),
-            time=str(class_time),
+            time=time_range,
         )
     except Exception:
         logger.exception("Error enviando correos de cancelación")

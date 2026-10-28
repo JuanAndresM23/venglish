@@ -67,24 +67,41 @@ def admin_login(username, password):
     }
 
 
-def forgot_password(email):
+def forgot_password(email, audience="student", username=None):
     email = clean_text(email, 255).lower()
     if not email:
         raise ServiceError("Correo requerido", 400)
 
+    is_admin = audience == "admin"
+    username = clean_text(username, 100)
+    if is_admin and not username:
+        raise ServiceError("Usuario requerido", 400)
+
     with db_cursor(commit=True) as cursor:
-        student = student_model.get_by_email(cursor, email)
-        if not student:
+        # Un administrador debe indicar su usuario y el correo registrado en esa misma cuenta.
+        account = (
+            admin_model.get_by_username_and_email(cursor, username, email)
+            if is_admin
+            else student_model.get_by_email(cursor, email)
+        )
+        if not account:
             return FORGOT_PASSWORD_MESSAGE
 
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now() + timedelta(hours=RESET_TOKEN_HOURS)
-        password_reset_model.create(cursor, student[0], token, expires_at)
+        password_reset_model.create(
+            cursor,
+            token,
+            expires_at,
+            student_id=None if is_admin else account[0],
+            admin_id=account[0] if is_admin else None,
+        )
 
-    reset_link = f"{current_app.config['FRONTEND_ORIGINS'][0]}/reset-password?token={token}"
+    query = f"token={token}&type=admin" if is_admin else f"token={token}"
+    reset_link = f"{current_app.config['FRONTEND_ORIGINS'][0]}/reset-password?{query}"
     send_password_reset_email(
-        student_name=student[1],
-        student_email=student[2],
+        student_name=account[1],
+        student_email=account[2],
         reset_link=reset_link,
     )
     return FORGOT_PASSWORD_MESSAGE
@@ -95,6 +112,8 @@ def reset_password(token, new_password):
     new_password = str(new_password or "")
     if not token or not new_password:
         raise ServiceError("Token y contraseña requeridos", 400)
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise ServiceError("La contraseña debe tener al menos 10 caracteres", 400)
 
     with db_cursor(commit=True) as cursor:
         reset = password_reset_model.get_by_token(cursor, token)
@@ -105,5 +124,9 @@ def reset_password(token, new_password):
         if reset[2] < datetime.now():
             raise ServiceError("Token expirado", 400)
 
-        student_model.set_password(cursor, reset[1], generate_password_hash(new_password))
+        password_hash = generate_password_hash(new_password)
+        if reset[4]:
+            admin_model.set_password(cursor, reset[4], password_hash)
+        else:
+            student_model.set_password(cursor, reset[1], password_hash)
         password_reset_model.mark_used(cursor, reset[0])
