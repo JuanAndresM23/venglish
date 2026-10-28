@@ -1,0 +1,78 @@
+.admin-shell {
+  min-height: 100vh;
+  background: var(--venglish-bg-gradient);
+  background-attachment: fixed;
+}
+
+.admin-main {
+  min-height: 100vh;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.28s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shell.is-collapsed .admin-main {
+  margin-left: var(--sidebar-width-collapsed);
+}
+
+.admin-content {
+  flex: 1;
+  padding: 36px 32px 60px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Barra superior: solo existe en móvil, para abrir el menú */
+.admin-topbar {
+  display: none;
+}
+
+.admin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(26, 26, 26, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 900px) {
+  .admin-main,
+  .admin-shell.is-collapsed .admin-main {
+    margin-left: 0;
+  }
+
+  .admin-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 75, 176, 0.14);
+  }
+
+  .admin-topbar-button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    background: var(--venglish-gradient-strong);
+    cursor: pointer;
+  }
+
+  .admin-topbar-logo {
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .admin-content {
+    padding: 22px 14px 40px;
+  }
+}

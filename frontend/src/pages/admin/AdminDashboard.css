@@ -1,0 +1,87 @@
+/* Calendario del panel de administración (FullCalendar con los colores de VEnglish) */
+.calendar-card {
+  overflow-x: auto;
+}
+
+.fc {
+  font-family: inherit;
+}
+
+.fc-toolbar {
+  margin-bottom: 20px !important;
+}
+
+.fc-toolbar-title {
+  color: var(--venglish-black);
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+}
+
+.fc .fc-button-primary {
+  background: var(--venglish-gradient-strong) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  box-shadow: 0 5px 15px rgba(255, 75, 176, 0.25);
+}
+
+.fc .fc-button-primary:hover {
+  opacity: 0.9;
+}
+
+.fc .fc-button-primary:focus {
+  box-shadow: none !important;
+}
+
+.fc .fc-day-today {
+  background: rgba(255, 75, 176, 0.08) !important;
+}
+
+.fc-event {
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 3px 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fc .fc-daygrid-day-number,
+.fc .fc-col-header-cell-cushion {
+  color: var(--venglish-black);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.fc-daygrid-day:hover {
+  background: rgba(255, 219, 88, 0.06);
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th,
+.fc-theme-standard .fc-scrollgrid {
+  border-color: rgba(255, 75, 176, 0.12) !important;
+}
+
+.fc-timegrid-slot {
+  height: 2.5rem;
+}
+
+.fc-timegrid-axis {
+  font-weight: 600;
+}
+
+.fc-timegrid-event {
+  border-radius: 8px !important;
+}
+
+.fc-timegrid-event .fc-event-main {
+  padding: 4px;
+}
+
+@media (max-width: 900px) {
+  .fc-toolbar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px;
+  }
+}

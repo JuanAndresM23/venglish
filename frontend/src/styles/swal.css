@@ -1,0 +1,80 @@
+/* SweetAlert2 con la identidad de VEnglish */
+.venglish-swal {
+  border-radius: 22px !important;
+  padding: 1.6rem 1.4rem 1.4rem !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+.venglish-swal-title {
+  color: var(--venglish-black) !important;
+  font-weight: 800 !important;
+  font-size: 1.45rem !important;
+}
+
+.venglish-swal .swal2-html-container {
+  color: var(--venglish-gray) !important;
+}
+
+.venglish-swal-confirm,
+.venglish-swal-danger,
+.venglish-swal-cancel {
+  border: none;
+  border-radius: 12px;
+  padding: 0.7rem 1.6rem;
+  margin: 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
+
+.venglish-swal-confirm {
+  color: #fff;
+  background: var(--venglish-gradient);
+  box-shadow: 0 6px 16px rgba(255, 75, 176, 0.3);
+}
+
+.venglish-swal-danger {
+  color: #fff;
+  background: linear-gradient(135deg, #e53935 0%, #ff6f61 100%);
+  box-shadow: 0 6px 16px rgba(229, 57, 53, 0.3);
+}
+
+.venglish-swal-cancel {
+  color: var(--venglish-gray);
+  background: #f1f1f1;
+}
+
+.venglish-swal-confirm:hover,
+.venglish-swal-danger:hover,
+.venglish-swal-cancel:hover {
+  transform: translateY(-1px);
+  opacity: 0.93;
+}
+
+.venglish-swal .swal2-icon.swal2-success [class^="swal2-success-line"] {
+  background-color: var(--venglish-pink);
+}
+
+.venglish-swal .swal2-icon.swal2-success .swal2-success-ring {
+  border-color: rgba(255, 75, 176, 0.3);
+}
+
+.venglish-swal .swal2-icon.swal2-question {
+  border-color: var(--venglish-orange);
+  color: var(--venglish-orange);
+}
+
+.venglish-swal .swal2-icon.swal2-warning {
+  border-color: var(--venglish-yellow);
+  color: #e0a800;
+}
+
+.swal2-popup.swal2-toast.venglish-swal {
+  padding: 0.8rem 1rem !important;
+}
+
+/* Por encima de los diálogos de MUI (z-index 1300) */
+.swal2-container {
+  z-index: 2000 !important;
+}
