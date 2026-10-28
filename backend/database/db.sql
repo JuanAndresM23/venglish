@@ -7,7 +7,8 @@ USE bd_venglish;
 CREATE TABLE IF NOT EXISTS courses (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     course_name VARCHAR(150) NOT NULL,
-    duration    INT NULL
+    duration    INT NULL,
+    is_active   BOOLEAN NOT NULL DEFAULT TRUE   -- los inactivos no se ofrecen al reservar
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS admins (
@@ -70,3 +71,10 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     CONSTRAINT fk_reset_student FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE,
     CONSTRAINT fk_reset_admin   FOREIGN KEY (admin_id)   REFERENCES admins   (id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Tipos de clase que el estudiante puede reservar.
+INSERT INTO courses (course_name)
+SELECT name FROM (
+    SELECT 'Clase de inglés' AS name UNION ALL SELECT 'Asesoría' UNION ALL SELECT 'Primera clase'
+) AS class_types
+WHERE NOT EXISTS (SELECT 1 FROM courses c WHERE c.course_name = class_types.name);

@@ -4,6 +4,7 @@ import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
+import SchoolIcon from "@mui/icons-material/School";
 
 export const LEVEL_SUPERADMIN = 1;
 
@@ -17,6 +18,7 @@ export const ADMIN_MENU = [
     icon: ScheduleIcon,
   },
   { to: "/students", label: "Estudiantes", icon: PeopleAltIcon, level: LEVEL_SUPERADMIN },
+  { to: "/teachers", label: "Docentes", icon: SchoolIcon, level: LEVEL_SUPERADMIN },
   { to: "/profile", label: "Perfil", icon: AccountCircleIcon },
 ];
 

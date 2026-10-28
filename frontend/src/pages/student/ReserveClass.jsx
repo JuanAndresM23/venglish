@@ -158,10 +158,10 @@ export default function ReserveClass() {
           <Grid container spacing={3}>
             <Grid size={12}>
               <FormControl fullWidth disabled={loadingOptions}>
-                <InputLabel id="course-label">Curso</InputLabel>
+                <InputLabel id="course-label">Tipo de clase</InputLabel>
                 <Select
                   labelId="course-label"
-                  label="Curso"
+                  label="Tipo de clase"
                   value={form.course_id}
                   onChange={(event) => updateField("course_id", event.target.value)}
                   required

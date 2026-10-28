@@ -30,6 +30,29 @@ def teacher_exists(cursor, teacher_id):
     return cursor.fetchone() is not None
 
 
+def list_teacher_accounts(cursor):
+    cursor.execute(
+        """
+        SELECT id, username, full_name, email
+        FROM admins
+        WHERE role_level = %s
+        ORDER BY COALESCE(full_name, username)
+        """,
+        (LEVEL_TEACHER,),
+    )
+    return cursor.fetchall()
+
+
+def create_teacher(cursor, username, password_hash, full_name, email):
+    cursor.execute(
+        """
+        INSERT INTO admins (username, password, role_level, full_name, email)
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        (username, password_hash, LEVEL_TEACHER, full_name, email),
+    )
+
+
 def count_teachers(cursor):
     cursor.execute(
         "SELECT COUNT(*) FROM admins WHERE role_level = %s", (LEVEL_TEACHER,)

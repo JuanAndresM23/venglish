@@ -37,6 +37,19 @@ def add_student():
     return jsonify({"message": "Estudiante pre-registrado correctamente"}), 201
 
 
+@admin_bp.get("/admin/teachers")
+@superadmin_required
+def list_teachers():
+    return jsonify(admin_service.list_teachers())
+
+
+@admin_bp.post("/admin/teachers")
+@superadmin_required
+def add_teacher():
+    admin_service.add_teacher(json_body())
+    return jsonify({"message": "Docente creado correctamente"}), 201
+
+
 @admin_bp.get("/admin/profile")
 @admin_required
 def get_profile():

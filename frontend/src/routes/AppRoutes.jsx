@@ -19,6 +19,7 @@ import ReserveClass from "../pages/student/ReserveClass";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import TeacherSchedule from "../pages/admin/TeacherSchedule";
 import Students from "../pages/admin/Students";
+import Teachers from "../pages/admin/Teachers";
 import AdminProfile from "../pages/admin/AdminProfile";
 
 // /dashboard es compartida: cada rol ve su propio panel dentro de su propio layout.
@@ -79,6 +80,7 @@ export default function AppRoutes() {
         <Route path="/profile" element={<AdminProfile />} />
         <Route element={<ProtectedRoute role="admin" level={LEVEL_SUPERADMIN} />}>
           <Route path="/students" element={<Students />} />
+          <Route path="/teachers" element={<Teachers />} />
           <Route path="/add-student" element={<Navigate to="/students" replace />} />
           <Route path="/list-students" element={<Navigate to="/students" replace />} />
         </Route>

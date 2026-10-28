@@ -12,6 +12,9 @@ export const updateStudent = (id, student) =>
   apiFetch(`/api/students/${id}`, { method: "PUT", body: JSON.stringify(student) });
 export const deleteStudent = (id) => apiFetch(`/api/students/${id}`, { method: "DELETE" });
 
+export const listTeachers = () => apiFetch("/api/admin/teachers");
+export const addTeacher = (teacher) => post("/api/admin/teachers", teacher);
+
 export const getSchedule = (teacherId) =>
   apiFetch(`/api/admin/schedule${teacherId ? `?teacher_id=${teacherId}` : ""}`);
 export const saveSchedule = (teacherId, blocks) =>

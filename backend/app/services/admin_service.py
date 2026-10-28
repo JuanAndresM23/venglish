@@ -116,6 +116,38 @@ def delete_student(student_id):
 MIN_PASSWORD_LENGTH = 10
 
 
+def list_teachers():
+    with db_cursor() as cursor:
+        rows = admin_model.list_teacher_accounts(cursor)
+    return [
+        {"id": row[0], "username": row[1], "name": row[2] or row[1], "email": row[3]}
+        for row in rows
+    ]
+
+
+def add_teacher(data):
+    username = clean_text(data.get("username"), 100).lower()
+    full_name = clean_text(data.get("full_name"), 150)
+    email = clean_text(data.get("email"), 255).lower()
+    password = str(data.get("password") or "")
+    if not username or not full_name:
+        raise ServiceError("Usuario y nombre son obligatorios", 400)
+    if " " in username:
+        raise ServiceError("El usuario no puede contener espacios", 400)
+    if email and ("@" not in email or "." not in email.split("@")[-1]):
+        raise ServiceError("Correo inválido", 400)
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise ServiceError("La contraseña debe tener al menos 10 caracteres", 400)
+
+    try:
+        with db_cursor(commit=True) as cursor:
+            admin_model.create_teacher(
+                cursor, username, generate_password_hash(password), full_name, email or None
+            )
+    except IntegrityError:
+        raise ServiceError("Ese nombre de usuario ya está registrado", 409)
+
+
 def get_profile(admin_id):
     with db_cursor() as cursor:
         row = admin_model.get_by_id(cursor, admin_id)
