@@ -67,16 +67,16 @@ def count_teachers(cursor):
 
 def get_by_id(cursor, admin_id):
     cursor.execute(
-        "SELECT username, full_name, email, role_level FROM admins WHERE id = %s",
+        "SELECT username, full_name, email, role_level, calendar_id FROM admins WHERE id = %s",
         (admin_id,),
     )
     return cursor.fetchone()
 
 
-def update_profile(cursor, admin_id, full_name, email):
+def update_profile(cursor, admin_id, full_name, email, calendar_id):
     cursor.execute(
-        "UPDATE admins SET full_name = %s, email = %s WHERE id = %s",
-        (full_name, email, admin_id),
+        "UPDATE admins SET full_name = %s, email = %s, calendar_id = %s WHERE id = %s",
+        (full_name, email, calendar_id, admin_id),
     )
 
 

@@ -38,7 +38,8 @@ def get_reservation_contacts(cursor, course_id, teacher_id, student_id):
     cursor.execute(
         """
         SELECT s.name, s.email, c.course_name,
-               COALESCE(a.full_name, a.username), a.email
+               COALESCE(a.full_name, a.username), a.email,
+               COALESCE(NULLIF(a.calendar_id, ''), a.email)
         FROM students s
         JOIN courses c ON c.id = %s
         JOIN admins a ON a.id = %s
@@ -70,7 +71,8 @@ def get_for_cancellation(cursor, booking_id):
         """
         SELECT b.student_id, b.teacher_id, b.class_date, b.class_time,
                s.name, s.email, c.course_name,
-               COALESCE(a.full_name, a.username), a.email, b.duration_minutes
+               COALESCE(a.full_name, a.username), a.email, b.duration_minutes,
+               COALESCE(NULLIF(a.calendar_id, ''), a.email), b.calendar_event_id
         FROM bookings b
         JOIN students s ON b.student_id = s.id
         JOIN courses c ON b.course_id = c.id
@@ -81,6 +83,12 @@ def get_for_cancellation(cursor, booking_id):
         (booking_id,),
     )
     return cursor.fetchone()
+
+
+def set_calendar_event(cursor, booking_id, event_id):
+    cursor.execute(
+        "UPDATE bookings SET calendar_event_id = %s WHERE id = %s", (event_id, booking_id)
+    )
 
 
 def delete(cursor, booking_id):

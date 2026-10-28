@@ -5,6 +5,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.database import db_cursor
 from app.models import admin_model, booking_model, student_model
+from app.services import google_calendar
 from app.constants import LEVEL_SUPERADMIN
 from app.utils.errors import ServiceError
 from app.utils.http import clean_text
@@ -161,19 +162,22 @@ def get_profile(admin_id):
         "email": row[2] or "",
         "level": row[3],
         "role": "Superadministrador" if row[3] == LEVEL_SUPERADMIN else "Docente",
+        "calendar_id": row[4] or "",
+        "calendar_share_email": google_calendar.service_account_email(),
     }
 
 
 def update_profile(admin_id, data):
     full_name = clean_text(data.get("full_name"), 100)
     email = clean_text(data.get("email"), 100).lower()
+    calendar_id = clean_text(data.get("calendar_id"), 255)
     if not full_name:
         raise ServiceError("El nombre es obligatorio", 400)
     if email and ("@" not in email or "." not in email.split("@")[-1]):
         raise ServiceError("Correo inválido", 400)
 
     with db_cursor(commit=True) as cursor:
-        admin_model.update_profile(cursor, admin_id, full_name, email or None)
+        admin_model.update_profile(cursor, admin_id, full_name, email or None, calendar_id or None)
     return full_name
 
 
