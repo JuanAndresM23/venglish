@@ -13,6 +13,7 @@ from app.utils.http import clean_text
 MIN_PASSWORD_LENGTH = 10
 RESET_TOKEN_HOURS = 1
 FORGOT_PASSWORD_MESSAGE = "Si el correo existe, enviaremos instrucciones."
+INACTIVE_STUDENT_MESSAGE = "Tu cuenta está desactivada. Comunícate con la academia."
 
 
 def student_login(student_code, password):
@@ -26,6 +27,8 @@ def student_login(student_code, password):
 
     if not student or not student[2] or not check_password_hash(student[2], password):
         raise ServiceError("Código o contraseña incorrectos", 401)
+    if not student[3]:
+        raise ServiceError(INACTIVE_STUDENT_MESSAGE, 403)
 
     return {"id": student[0], "name": student[1]}
 
@@ -42,6 +45,8 @@ def student_register(student_code, password):
         student = student_model.get_for_activation(cursor, student_code)
         if not student:
             raise ServiceError("Este código no existe en el sistema", 404)
+        if not student[2]:
+            raise ServiceError(INACTIVE_STUDENT_MESSAGE, 403)
         if student[1]:
             raise ServiceError("Este código ya fue utilizado", 409)
         student_model.set_password(cursor, student[0], generate_password_hash(password))

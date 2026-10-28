@@ -10,6 +10,8 @@ export const listStudents = () => apiFetch("/api/list_students");
 export const addStudent = (student) => post("/api/add_student", student);
 export const updateStudent = (id, student) =>
   apiFetch(`/api/students/${id}`, { method: "PUT", body: JSON.stringify(student) });
+export const setStudentEnabled = (id, enabled) =>
+  apiFetch(`/api/students/${id}/status`, { method: "PUT", body: JSON.stringify({ enabled }) });
 export const deleteStudent = (id) => apiFetch(`/api/students/${id}`, { method: "DELETE" });
 
 export const listTeachers = () => apiFetch("/api/admin/teachers");

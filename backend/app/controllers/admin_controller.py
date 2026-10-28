@@ -81,6 +81,15 @@ def update_student(student_id):
     return jsonify({"message": "Estudiante actualizado correctamente"})
 
 
+@admin_bp.put("/students/<int:student_id>/status")
+@superadmin_required
+def set_student_status(student_id):
+    data = json_body()
+    admin_service.set_student_enabled(student_id, data)
+    message = "Estudiante activado" if data.get("enabled") else "Estudiante desactivado"
+    return jsonify({"message": message})
+
+
 @admin_bp.delete("/students/<int:student_id>")
 @superadmin_required
 def delete_student(student_id):
