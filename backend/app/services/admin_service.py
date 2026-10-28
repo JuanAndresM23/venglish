@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from pymysql import IntegrityError
+from psycopg2 import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.database import db_cursor
@@ -141,6 +141,8 @@ def add_teacher(data):
 
     try:
         with db_cursor(commit=True) as cursor:
+            if admin_model.username_exists(cursor, username):
+                raise ServiceError("Ese nombre de usuario ya está registrado", 409)
             admin_model.create_teacher(
                 cursor, username, generate_password_hash(password), full_name, email or None
             )

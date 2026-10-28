@@ -38,7 +38,7 @@ function TeacherForm({ onClose, onSubmit }) {
   const setField = (field) => (event) =>
     setForm({
       ...form,
-      [field]: field === "username" ? event.target.value.replace(/\s/g, "") : event.target.value,
+      [field]: field === "username" ? event.target.value.replace(/\s/g, "").toLowerCase() : event.target.value,
     });
 
   const passwordTooShort = form.password.length > 0 && form.password.length < MIN_PASSWORD_LENGTH;

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 
-from pymysql import IntegrityError
+from psycopg2 import IntegrityError
 
 from app.constants import (
     ALLOWED_DURATIONS,

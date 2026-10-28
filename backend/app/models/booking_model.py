@@ -1,6 +1,6 @@
 _OVERLAP = """
-    AND TIMESTAMP(class_date, class_time) < %s
-    AND TIMESTAMP(class_date, class_time) + INTERVAL duration_minutes MINUTE > %s
+    AND (class_date + class_time) < %s
+    AND (class_date + class_time) + make_interval(mins => duration_minutes) > %s
 """
 
 
@@ -27,10 +27,11 @@ def create(cursor, course_id, student_id, teacher_id, class_date, class_time, du
             course_id, student_id, teacher_id, class_date, class_time, duration_minutes
         )
         VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING id
         """,
         (course_id, student_id, teacher_id, class_date, class_time, duration_minutes),
     )
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
 def get_reservation_contacts(cursor, course_id, teacher_id, student_id):
@@ -118,7 +119,7 @@ def count_next_week(cursor, teacher_id=None):
     query = """
         SELECT COUNT(*) FROM bookings
         WHERE class_date >= CURRENT_DATE
-          AND class_date < CURRENT_DATE + INTERVAL 7 DAY
+          AND class_date < CURRENT_DATE + INTERVAL '7 days'
     """
     params = ()
     if teacher_id is not None:
@@ -131,7 +132,7 @@ def count_next_week(cursor, teacher_id=None):
 def booked_times(cursor, teacher_id, day):
     cursor.execute(
         """
-        SELECT TIME_FORMAT(class_time, '%%H:%%i'), duration_minutes
+        SELECT to_char(class_time, 'HH24:MI'), duration_minutes
         FROM bookings
         WHERE teacher_id = %s AND class_date = %s
         """,

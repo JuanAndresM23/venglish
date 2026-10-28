@@ -43,6 +43,11 @@ def list_teacher_accounts(cursor):
     return cursor.fetchall()
 
 
+def username_exists(cursor, username):
+    cursor.execute("SELECT 1 FROM admins WHERE LOWER(username) = %s", (username,))
+    return cursor.fetchone() is not None
+
+
 def create_teacher(cursor, username, password_hash, full_name, email):
     cursor.execute(
         """
