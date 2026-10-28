@@ -17,7 +17,7 @@ const EMPTY_PASSWORDS = { current: "", next: "", confirm: "" };
 export default function AdminProfile() {
   const { setUser } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [form, setForm] = useState({ full_name: "", email: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", calendar_id: "" });
   const [passwords, setPasswords] = useState(EMPTY_PASSWORDS);
   const [loadError, setLoadError] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -27,7 +27,7 @@ export default function AdminProfile() {
     getProfile()
       .then((data) => {
         setProfile(data);
-        setForm({ full_name: data.full_name, email: data.email });
+        setForm({ full_name: data.full_name, email: data.email, calendar_id: data.calendar_id });
       })
       .catch((err) => setLoadError(err.message || "No se pudo cargar el perfil."));
   }, []);
@@ -147,6 +147,21 @@ export default function AdminProfile() {
                 fullWidth
               />
               <TextField label="Usuario" value={profile.username} disabled fullWidth />
+              <TextField
+                label="Calendario de Google"
+                placeholder={form.email || "tucorreo@gmail.com"}
+                value={form.calendar_id}
+                onChange={(e) => setForm({ ...form, calendar_id: e.target.value })}
+                helperText="Las clases reservadas se agregan a este calendario. Si lo dejas vacío se usa tu correo."
+                fullWidth
+              />
+              {profile.calendar_share_email && (
+                <Alert severity="info" sx={{ borderRadius: 2 }}>
+                  En Google Calendar, comparte tu calendario con{" "}
+                  <strong style={{ wordBreak: "break-all" }}>{profile.calendar_share_email}</strong>{" "}
+                  y dale el permiso "Hacer cambios en eventos".
+                </Alert>
+              )}
               <GradientButton type="submit" disabled={savingProfile}>
                 {savingProfile ? "Guardando..." : "Guardar cambios"}
               </GradientButton>
