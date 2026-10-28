@@ -1,6 +1,6 @@
 def get_credentials_by_code(cursor, student_code):
     cursor.execute(
-        "SELECT id, name, password FROM students WHERE student_code = %s",
+        "SELECT id, name, password, is_active FROM students WHERE student_code = %s",
         (student_code,),
     )
     return cursor.fetchone()
@@ -16,7 +16,7 @@ def get_by_email(cursor, email):
 
 def get_for_activation(cursor, student_code):
     cursor.execute(
-        "SELECT id, password FROM students WHERE student_code = %s FOR UPDATE",
+        "SELECT id, password, is_active FROM students WHERE student_code = %s FOR UPDATE",
         (student_code,),
     )
     return cursor.fetchone()
@@ -31,7 +31,7 @@ def set_password(cursor, student_id, password_hash):
 
 def list_all(cursor):
     cursor.execute(
-        "SELECT id, name, phone, email, student_code, password IS NOT NULL "
+        "SELECT id, name, phone, email, student_code, password IS NOT NULL, is_active "
         "FROM students ORDER BY name"
     )
     return cursor.fetchall()
@@ -71,3 +71,16 @@ def get_for_delete(cursor, student_id):
 
 def delete(cursor, student_id):
     cursor.execute("DELETE FROM students WHERE id = %s", (student_id,))
+
+
+def set_active(cursor, student_id, is_active):
+    cursor.execute(
+        "UPDATE students SET is_active = %s WHERE id = %s", (is_active, student_id)
+    )
+    return cursor.rowcount
+
+
+def is_active(cursor, student_id):
+    cursor.execute("SELECT is_active FROM students WHERE id = %s", (student_id,))
+    row = cursor.fetchone()
+    return bool(row and row[0])

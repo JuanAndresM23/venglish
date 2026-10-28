@@ -13,7 +13,7 @@ from app.constants import (
     ROLE_STUDENT,
 )
 from app.database import db_cursor
-from app.models import admin_model, booking_model, course_model
+from app.models import admin_model, booking_model, course_model, student_model
 from app.services import email_service, google_calendar, schedule_service
 from app.utils.dates import parse_class_datetime
 from app.utils.errors import ServiceError
@@ -74,6 +74,8 @@ def create_booking(student_id, data):
 
     try:
         with db_cursor(commit=True) as cursor:
+            if not student_model.is_active(cursor, student_id):
+                raise ServiceError("Tu cuenta está desactivada. Comunícate con la academia.", 403)
             if not course_model.exists(cursor, course_id):
                 raise ServiceError("Curso inválido", 400)
             if not admin_model.teacher_exists(cursor, teacher_id):

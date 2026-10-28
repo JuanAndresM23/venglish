@@ -15,13 +15,21 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
+import BlockIcon from "@mui/icons-material/Block";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import SearchIcon from "@mui/icons-material/Search";
 
-import { addStudent, deleteStudent, listStudents, updateStudent } from "../../api/admin";
+import {
+  addStudent,
+  deleteStudent,
+  listStudents,
+  setStudentEnabled,
+  updateStudent,
+} from "../../api/admin";
 import StudentFormDialog from "../../components/students/StudentFormDialog";
 import DataCard from "../../components/ui/DataCard";
 import GradientButton from "../../components/ui/GradientButton";
@@ -32,6 +40,18 @@ import useIsMobile from "../../hooks/useIsMobile";
 import { alertError, alertSuccess, confirmAction, toastSuccess } from "../../utils/alerts";
 
 const headCell = { fontWeight: 700, color: "var(--venglish-black)", background: "#fff5fa" };
+
+// Desactivado (por la academia) tiene prioridad sobre Activa/Pendiente (si ya creó su contraseña).
+function accountStatus(student) {
+  if (!student.enabled) return { label: "Desactivado", color: "#fff", background: "var(--venglish-gray)" };
+  if (student.active) return { label: "Activa", color: "#fff", background: "var(--venglish-purple)" };
+  return { label: "Pendiente", color: "#7a5c00", background: "var(--venglish-yellow)" };
+}
+
+function StatusChip({ student }) {
+  const { label, color, background } = accountStatus(student);
+  return <Chip label={label} size="small" sx={{ fontWeight: 700, color, background }} />;
+}
 
 export default function Students() {
   const [students, setStudents] = useState([]);
@@ -91,6 +111,30 @@ export default function Students() {
         "Estudiante registrado",
         `${form.name} ya puede activar su cuenta con el código ${form.student_code}.`
       );
+    }
+  };
+
+  const handleToggleEnabled = async (student) => {
+    const enabling = !student.enabled;
+    const confirmed = await confirmAction({
+      title: enabling ? "¿Activar estudiante?" : "¿Desactivar estudiante?",
+      text: enabling
+        ? `${student.name} podrá volver a iniciar sesión y reservar clases.`
+        : `${student.name} no podrá iniciar sesión ni reservar clases. Sus datos y clases ya reservadas se conservan.`,
+      confirmText: enabling ? "Sí, activar" : "Sí, desactivar",
+      cancelText: "Cancelar",
+      danger: !enabling,
+    });
+    if (!confirmed) return;
+
+    try {
+      await setStudentEnabled(student.id, enabling);
+      setStudents((current) =>
+        current.map((item) => (item.id === student.id ? { ...item, enabled: enabling } : item))
+      );
+      toastSuccess(enabling ? "Estudiante activado" : "Estudiante desactivado");
+    } catch (err) {
+      alertError("No se pudo cambiar el estado", err.message || "Error al actualizar el estudiante.");
     }
   };
 
@@ -166,16 +210,7 @@ export default function Students() {
                       variant="outlined"
                       sx={{ fontWeight: 700, color: "var(--venglish-pink)", borderColor: "var(--venglish-pink)" }}
                     />,
-                    <Chip
-                      key="status"
-                      label={student.active ? "Activa" : "Pendiente"}
-                      size="small"
-                      sx={{
-                        fontWeight: 700,
-                        color: student.active ? "#fff" : "#7a5c00",
-                        background: student.active ? "var(--venglish-purple)" : "var(--venglish-yellow)",
-                      }}
-                    />,
+                    <StatusChip key="status" student={student} />,
                   ]}
                   fields={[
                     { label: "Teléfono", value: student.phone },
@@ -196,6 +231,15 @@ export default function Students() {
                         }}
                       >
                         Editar
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color={student.enabled ? "inherit" : "success"}
+                        startIcon={student.enabled ? <BlockIcon /> : <CheckCircleIcon />}
+                        onClick={() => handleToggleEnabled(student)}
+                        sx={{ flex: 1, textTransform: "none", borderRadius: "10px" }}
+                      >
+                        {student.enabled ? "Desactivar" : "Activar"}
                       </Button>
                       <Button
                         variant="outlined"
@@ -251,17 +295,7 @@ export default function Students() {
                     <TableCell>{student.phone}</TableCell>
                     <TableCell>{student.email}</TableCell>
                     <TableCell>
-                      <Chip
-                        label={student.active ? "Activa" : "Pendiente"}
-                        size="small"
-                        sx={{
-                          fontWeight: 700,
-                          color: student.active ? "#fff" : "#7a5c00",
-                          background: student.active
-                            ? "var(--venglish-purple)"
-                            : "var(--venglish-yellow)",
-                        }}
-                      />
+                      <StatusChip student={student} />
                     </TableCell>
                     <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                       <Tooltip title="Editar">
@@ -271,6 +305,15 @@ export default function Students() {
                           sx={{ color: "var(--venglish-pink)" }}
                         >
                           <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={student.enabled ? "Desactivar" : "Activar"}>
+                        <IconButton
+                          aria-label={`${student.enabled ? "Desactivar" : "Activar"} a ${student.name}`}
+                          color={student.enabled ? "default" : "success"}
+                          onClick={() => handleToggleEnabled(student)}
+                        >
+                          {student.enabled ? <BlockIcon /> : <CheckCircleIcon />}
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Eliminar">

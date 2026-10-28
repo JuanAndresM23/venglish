@@ -60,6 +60,7 @@ def list_students():
             "email": row[3],
             "code": row[4],
             "active": bool(row[5]),
+            "enabled": bool(row[6]),
         }
         for row in rows
     ]
@@ -97,6 +98,15 @@ def update_student(student_id, data):
             student_model.update(cursor, student_id, name, phone, email, student_code)
     except IntegrityError:
         raise ServiceError("El código o el correo ya están registrados", 409)
+
+
+def set_student_enabled(student_id, data):
+    enabled = data.get("enabled")
+    if not isinstance(enabled, bool):
+        raise ServiceError("Estado inválido", 400)
+    with db_cursor(commit=True) as cursor:
+        if not student_model.set_active(cursor, student_id, enabled):
+            raise ServiceError("El estudiante no existe", 404)
 
 
 def delete_student(student_id):

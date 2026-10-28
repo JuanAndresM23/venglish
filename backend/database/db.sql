@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS students (
     email             VARCHAR(255) NULL UNIQUE,
     student_code      VARCHAR(50)  NOT NULL UNIQUE,
     password          VARCHAR(255) NULL,
-    registration_date DATE NULL DEFAULT CURRENT_DATE
+    registration_date DATE NULL DEFAULT CURRENT_DATE,
+    is_active         BOOLEAN NOT NULL DEFAULT TRUE  -- FALSE = desactivado por la academia
 );
 
 CREATE TABLE IF NOT EXISTS bookings (
