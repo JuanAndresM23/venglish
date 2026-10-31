@@ -6,6 +6,7 @@ from flask_cors import CORS
 from app.config import Config
 from app.controllers import register_blueprints
 from app.database import init_db
+from app.services.notifications import register_subscribers
 from app.utils.errors import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ def create_app(config_class=Config):
     def make_session_permanent():
         session.permanent = True
 
+    register_subscribers()
     register_blueprints(app)
     register_error_handlers(app)
     return app

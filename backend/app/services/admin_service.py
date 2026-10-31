@@ -1,204 +1,212 @@
-from datetime import datetime, timedelta
-
-from psycopg2 import IntegrityError
-from werkzeug.security import check_password_hash, generate_password_hash
-
-from app.database import db_cursor
-from app.models import admin_model, booking_model, student_model
-from app.services import google_calendar
-from app.constants import LEVEL_SUPERADMIN
+from app.database import IntegrityError, UnitOfWork
+from app.entities import Student, Teacher
+from app.services.google_calendar import GoogleCalendar
 from app.utils.errors import ServiceError
 from app.utils.http import clean_text
-
-SUPERADMIN_COLOR = "#1976d2"
-TEACHER_COLOR = "#e91e63"
-
-
-def dashboard_events(is_superadmin, admin_id):
-    with db_cursor() as cursor:
-        rows = booking_model.list_for_dashboard(
-            cursor, None if is_superadmin else admin_id
-        )
-    return [
-        {
-            "id": str(row[0]),
-            "title": f"{row[1]} ({row[5]})" if is_superadmin else row[1],
-            "start": f"{row[3]}T{row[4]}",
-            "end": (datetime.combine(row[3], row[4]) + timedelta(minutes=row[6])).isoformat(),
-            "extendedProps": {"course": row[2], "teacher": row[5], "duration": row[6]},
-            "color": SUPERADMIN_COLOR if is_superadmin else TEACHER_COLOR,
-        }
-        for row in rows
-    ]
-
-
-def stats(is_superadmin, admin_id):
-    teacher_filter = None if is_superadmin else admin_id
-    with db_cursor() as cursor:
-        total_students = student_model.count(cursor) if is_superadmin else None
-        total_teachers = admin_model.count_teachers(cursor) if is_superadmin else None
-        upcoming = booking_model.count_upcoming(cursor, teacher_filter)
-        week = booking_model.count_next_week(cursor, teacher_filter)
-
-    return {
-        "is_superadmin": is_superadmin,
-        "students": total_students,
-        "teachers": total_teachers,
-        "upcoming_bookings": upcoming,
-        "week_bookings": week,
-    }
-
-
-def list_students():
-    with db_cursor() as cursor:
-        rows = student_model.list_all(cursor)
-    return [
-        {
-            "id": row[0],
-            "name": row[1],
-            "phone": row[2],
-            "email": row[3],
-            "code": row[4],
-            "active": bool(row[5]),
-            "enabled": bool(row[6]),
-        }
-        for row in rows
-    ]
-
-
-def _clean_student(data):
-    name = clean_text(data.get("name"), 150)
-    phone = clean_text(data.get("phone"), 30)
-    email = clean_text(data.get("email"), 254).lower()
-    student_code = clean_text(data.get("student_code"), 50).upper()
-    if not name or not student_code:
-        raise ServiceError("Nombre y código son obligatorios", 400)
-    if email and ("@" not in email or "." not in email.split("@")[-1]):
-        raise ServiceError("Correo inválido", 400)
-    return name, phone, email or None, student_code
-
-
-def add_student(data):
-    name, phone, email, student_code = _clean_student(data)
-
-    try:
-        with db_cursor(commit=True) as cursor:
-            student_model.create(cursor, name, phone, email, student_code)
-    except IntegrityError:
-        raise ServiceError("El código o el correo ya están registrados", 409)
-
-
-def update_student(student_id, data):
-    name, phone, email, student_code = _clean_student(data)
-
-    try:
-        with db_cursor(commit=True) as cursor:
-            if not student_model.get_for_delete(cursor, student_id):
-                raise ServiceError("El estudiante no existe", 404)
-            student_model.update(cursor, student_id, name, phone, email, student_code)
-    except IntegrityError:
-        raise ServiceError("El código o el correo ya están registrados", 409)
-
-
-def set_student_enabled(student_id, data):
-    enabled = data.get("enabled")
-    if not isinstance(enabled, bool):
-        raise ServiceError("Estado inválido", 400)
-    with db_cursor(commit=True) as cursor:
-        if not student_model.set_active(cursor, student_id, enabled):
-            raise ServiceError("El estudiante no existe", 404)
-
-
-def delete_student(student_id):
-    with db_cursor(commit=True) as cursor:
-        if not student_model.get_for_delete(cursor, student_id):
-            raise ServiceError("El estudiante no existe", 404)
-
-        bookings = booking_model.count_by_student(cursor, student_id)
-        if bookings:
-            raise ServiceError(
-                f"No se puede eliminar: tiene {bookings} reserva(s) registradas. "
-                "Cancela sus clases primero.",
-                409,
-            )
-        student_model.delete(cursor, student_id)
-
 
 MIN_PASSWORD_LENGTH = 10
 
 
-def list_teachers():
-    with db_cursor() as cursor:
-        rows = admin_model.list_teacher_accounts(cursor)
-    return [
-        {"id": row[0], "username": row[1], "name": row[2] or row[1], "email": row[3]}
-        for row in rows
-    ]
+def _valid_email(email):
+    return "@" in email and "." in email.split("@")[-1]
 
 
-def add_teacher(data):
-    username = clean_text(data.get("username"), 100).lower()
-    full_name = clean_text(data.get("full_name"), 150)
-    email = clean_text(data.get("email"), 255).lower()
-    password = str(data.get("password") or "")
-    if not username or not full_name:
-        raise ServiceError("Usuario y nombre son obligatorios", 400)
-    if " " in username:
-        raise ServiceError("El usuario no puede contener espacios", 400)
-    if email and ("@" not in email or "." not in email.split("@")[-1]):
-        raise ServiceError("Correo inválido", 400)
-    if len(password) < MIN_PASSWORD_LENGTH:
-        raise ServiceError("La contraseña debe tener al menos 10 caracteres", 400)
+class AdminAccountMixin:
+    """Carga la cuenta de quien consulta el panel."""
 
-    try:
-        with db_cursor(commit=True) as cursor:
-            if admin_model.username_exists(cursor, username):
-                raise ServiceError("Ese nombre de usuario ya está registrado", 409)
-            admin_model.create_teacher(
-                cursor, username, generate_password_hash(password), full_name, email or None
-            )
-    except IntegrityError:
-        raise ServiceError("Ese nombre de usuario ya está registrado", 409)
+    @staticmethod
+    def _load_admin(uow, admin_id):
+        admin = uow.admins.find_by_id(admin_id)
+        if not admin:
+            raise ServiceError("Usuario no encontrado", 404)
+        return admin
 
 
-def get_profile(admin_id):
-    with db_cursor() as cursor:
-        row = admin_model.get_by_id(cursor, admin_id)
-    if not row:
-        raise ServiceError("Usuario no encontrado", 404)
-    return {
-        "username": row[0],
-        "full_name": row[1] or "",
-        "email": row[2] or "",
-        "level": row[3],
-        "role": "Superadministrador" if row[3] == LEVEL_SUPERADMIN else "Docente",
-        "calendar_id": row[4] or "",
-        "calendar_share_email": google_calendar.service_account_email(),
-    }
+class DashboardService(AdminAccountMixin):
+    """Calendario y estadísticas del panel; el rol de la cuenta decide qué ve (polimorfismo)."""
+
+    def __init__(self, uow_factory=UnitOfWork):
+        self._uow_factory = uow_factory
+
+    def dashboard_events(self, admin_id):
+        with self._uow_factory() as uow:
+            viewer = self._load_admin(uow, admin_id)
+            details = uow.bookings.list_details(teacher_id=viewer.teacher_scope_id)
+        return [viewer.dashboard_event(detail) for detail in details]
+
+    def stats(self, admin_id):
+        with self._uow_factory() as uow:
+            viewer = self._load_admin(uow, admin_id)
+            scope = viewer.teacher_scope_id
+            is_superadmin = viewer.is_superadmin
+            return {
+                "is_superadmin": is_superadmin,
+                "students": uow.students.count() if is_superadmin else None,
+                "teachers": uow.admins.count_teachers() if is_superadmin else None,
+                "upcoming_bookings": uow.bookings.count_upcoming(scope),
+                "week_bookings": uow.bookings.count_next_week(scope),
+            }
 
 
-def update_profile(admin_id, data):
-    full_name = clean_text(data.get("full_name"), 100)
-    email = clean_text(data.get("email"), 100).lower()
-    calendar_id = clean_text(data.get("calendar_id"), 255)
-    if not full_name:
-        raise ServiceError("El nombre es obligatorio", 400)
-    if email and ("@" not in email or "." not in email.split("@")[-1]):
-        raise ServiceError("Correo inválido", 400)
+class StudentService:
+    """Gestión de estudiantes por el superadministrador."""
 
-    with db_cursor(commit=True) as cursor:
-        admin_model.update_profile(cursor, admin_id, full_name, email or None, calendar_id or None)
-    return full_name
+    def __init__(self, uow_factory=UnitOfWork):
+        self._uow_factory = uow_factory
+
+    def list_students(self):
+        with self._uow_factory() as uow:
+            students = uow.students.list_all()
+        return [student.to_dict() for student in students]
+
+    @staticmethod
+    def _clean(data):
+        name = clean_text(data.get("name"), 150)
+        phone = clean_text(data.get("phone"), 30)
+        email = clean_text(data.get("email"), 254).lower()
+        student_code = clean_text(data.get("student_code"), 50).upper()
+        if not name or not student_code:
+            raise ServiceError("Nombre y código son obligatorios", 400)
+        if email and not _valid_email(email):
+            raise ServiceError("Correo inválido", 400)
+        return name, phone, email or None, student_code
+
+    def add_student(self, data):
+        name, phone, email, student_code = self._clean(data)
+
+        try:
+            with self._uow_factory(commit=True) as uow:
+                uow.students.add(
+                    Student(name=name, phone=phone, email=email, student_code=student_code)
+                )
+        except IntegrityError:
+            raise ServiceError("El código o el correo ya están registrados", 409)
+
+    def update_student(self, student_id, data):
+        name, phone, email, student_code = self._clean(data)
+
+        try:
+            with self._uow_factory(commit=True) as uow:
+                student = uow.students.find_by_id(student_id, for_update=True)
+                if not student:
+                    raise ServiceError("El estudiante no existe", 404)
+                student.update_details(name, phone, email, student_code)
+                uow.students.update(student)
+        except IntegrityError:
+            raise ServiceError("El código o el correo ya están registrados", 409)
+
+    def set_student_enabled(self, student_id, data):
+        enabled = data.get("enabled")
+        if not isinstance(enabled, bool):
+            raise ServiceError("Estado inválido", 400)
+        with self._uow_factory(commit=True) as uow:
+            student = uow.students.find_by_id(student_id, for_update=True)
+            if not student:
+                raise ServiceError("El estudiante no existe", 404)
+            if enabled:
+                student.enable()
+            else:
+                student.disable()
+            uow.students.update(student)
+
+    def delete_student(self, student_id):
+        with self._uow_factory(commit=True) as uow:
+            if not uow.students.find_by_id(student_id, for_update=True):
+                raise ServiceError("El estudiante no existe", 404)
+
+            bookings = uow.bookings.count_by_student(student_id)
+            if bookings:
+                raise ServiceError(
+                    f"No se puede eliminar: tiene {bookings} reserva(s) registradas. "
+                    "Cancela sus clases primero.",
+                    409,
+                )
+            uow.students.delete(student_id)
 
 
-def change_password(admin_id, current_password, new_password):
-    current_password = str(current_password or "")
-    new_password = str(new_password or "")
-    if len(new_password) < MIN_PASSWORD_LENGTH:
-        raise ServiceError("La nueva contraseña debe tener al menos 10 caracteres", 400)
+class TeacherService:
+    """Gestión de docentes por el superadministrador."""
 
-    with db_cursor(commit=True) as cursor:
-        current_hash = admin_model.get_password_hash(cursor, admin_id)
-        if not current_hash or not check_password_hash(current_hash, current_password):
-            raise ServiceError("La contraseña actual es incorrecta", 400)
-        admin_model.set_password(cursor, admin_id, generate_password_hash(new_password))
+    def __init__(self, uow_factory=UnitOfWork):
+        self._uow_factory = uow_factory
+
+    def list_teachers(self):
+        with self._uow_factory() as uow:
+            teachers = uow.admins.list_teachers()
+        return [teacher.to_dict() for teacher in teachers]
+
+    def add_teacher(self, data):
+        username = clean_text(data.get("username"), 100).lower()
+        full_name = clean_text(data.get("full_name"), 150)
+        email = clean_text(data.get("email"), 255).lower()
+        password = str(data.get("password") or "")
+        if not username or not full_name:
+            raise ServiceError("Usuario y nombre son obligatorios", 400)
+        if " " in username:
+            raise ServiceError("El usuario no puede contener espacios", 400)
+        if email and not _valid_email(email):
+            raise ServiceError("Correo inválido", 400)
+        if len(password) < MIN_PASSWORD_LENGTH:
+            raise ServiceError("La contraseña debe tener al menos 10 caracteres", 400)
+
+        teacher = Teacher(username=username, full_name=full_name, email=email or None)
+        teacher.change_password(password)
+
+        try:
+            with self._uow_factory(commit=True) as uow:
+                if uow.admins.username_exists(username):
+                    raise ServiceError("Ese nombre de usuario ya está registrado", 409)
+                uow.admins.add(teacher)
+        except IntegrityError:
+            raise ServiceError("Ese nombre de usuario ya está registrado", 409)
+
+
+class ProfileService(AdminAccountMixin):
+    """Perfil y contraseña de la cuenta de administrador que inició sesión."""
+
+    def __init__(self, uow_factory=UnitOfWork, calendar=None):
+        self._uow_factory = uow_factory
+        self._calendar = calendar or GoogleCalendar()
+
+    def get_profile(self, admin_id):
+        with self._uow_factory() as uow:
+            admin = self._load_admin(uow, admin_id)
+        return {
+            "username": admin.username,
+            "full_name": admin.full_name or "",
+            "email": admin.email or "",
+            "level": admin.role_level,
+            "role": admin.role_label,
+            "calendar_id": admin.calendar_id or "",
+            "calendar_share_email": self._calendar.service_account_email(),
+        }
+
+    def update_profile(self, admin_id, data):
+        full_name = clean_text(data.get("full_name"), 100)
+        email = clean_text(data.get("email"), 100).lower()
+        calendar_id = clean_text(data.get("calendar_id"), 255)
+        if not full_name:
+            raise ServiceError("El nombre es obligatorio", 400)
+        if email and not _valid_email(email):
+            raise ServiceError("Correo inválido", 400)
+
+        with self._uow_factory(commit=True) as uow:
+            admin = uow.admins.find_by_id(admin_id, for_update=True)
+            if not admin:
+                raise ServiceError("Usuario no encontrado", 404)
+            admin.update_profile(full_name, email or None, calendar_id or None)
+            uow.admins.update(admin)
+        return full_name
+
+    def change_password(self, admin_id, current_password, new_password):
+        current_password = str(current_password or "")
+        new_password = str(new_password or "")
+        if len(new_password) < MIN_PASSWORD_LENGTH:
+            raise ServiceError("La nueva contraseña debe tener al menos 10 caracteres", 400)
+
+        with self._uow_factory(commit=True) as uow:
+            admin = uow.admins.find_by_id(admin_id, for_update=True)
+            if not admin or not admin.check_password(current_password):
+                raise ServiceError("La contraseña actual es incorrecta", 400)
+            admin.change_password(new_password)
+            uow.admins.update(admin)

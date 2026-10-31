@@ -1,10 +1,11 @@
 from flask import Blueprint, jsonify, session
 
 from app.constants import ROLE_ADMIN, ROLE_STUDENT
-from app.services import auth_service
+from app.services.auth_service import AuthService
 from app.utils.http import json_body
 
 auth_bp = Blueprint("auth", __name__)
+auth_service = AuthService()
 
 
 @auth_bp.post("/logout")

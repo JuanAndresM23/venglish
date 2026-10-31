@@ -1,11 +1,12 @@
 from flask import Blueprint, jsonify, session
 
 from app.constants import ROLE_ADMIN, ROLE_STUDENT
-from app.services import booking_service
+from app.services.booking_service import BookingService
 from app.utils.decorators import student_required
 from app.utils.http import json_body
 
 booking_bp = Blueprint("booking", __name__)
+booking_service = BookingService()
 
 
 @booking_bp.get("/courses")
@@ -48,6 +49,5 @@ def cancel_booking(booking_id):
         role=role,
         student_id=session.get("student_id"),
         user_id=session.get("user_id"),
-        role_level=session.get("role_level"),
     )
     return jsonify({"message": "Reserva cancelada"}), 200

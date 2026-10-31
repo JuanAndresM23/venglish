@@ -1,11 +1,12 @@
 from flask import Blueprint, jsonify, request, session
 
 from app.constants import CLASS_DURATION_MINUTES, LEVEL_SUPERADMIN
-from app.services import schedule_service
+from app.services.schedule_service import ScheduleService
 from app.utils.decorators import admin_required
 from app.utils.http import json_body
 
 schedule_bp = Blueprint("schedule", __name__)
+schedule_service = ScheduleService()
 
 
 def _schedule_teacher_id(source):
