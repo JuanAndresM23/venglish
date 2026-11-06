@@ -15,6 +15,7 @@ import {
 import { cancelBooking, listMyClasses } from "../../api/bookings";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
+import { BOOKINGS_CHANGED_EVENT } from "../../components/chat/ChatWidget";
 import GradientButton from "../../components/ui/GradientButton";
 import DataCard from "../../components/ui/DataCard";
 import PageContainer from "../../components/ui/PageContainer";
@@ -29,9 +30,15 @@ export default function StudentDashboard() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    listMyClasses()
-      .then((data) => setClasses(Array.isArray(data) ? data : []))
-      .catch((error) => console.error("Error cargando clases:", error));
+    const load = () =>
+      listMyClasses()
+        .then((data) => setClasses(Array.isArray(data) ? data : []))
+        .catch((error) => console.error("Error cargando clases:", error));
+
+    load();
+    // El asistente de chat puede reservar o cancelar clases: recargar cuando lo haga.
+    window.addEventListener(BOOKINGS_CHANGED_EVENT, load);
+    return () => window.removeEventListener(BOOKINGS_CHANGED_EVENT, load);
   }, []);
 
   const handleCancel = async (bookingId) => {

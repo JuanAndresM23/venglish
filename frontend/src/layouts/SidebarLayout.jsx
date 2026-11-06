@@ -12,7 +12,7 @@ import "./SidebarLayout.css";
 // Estructura con barra lateral + contenido, compartida por todos los roles. Cada rol la configura
 // con su menú y textos (ver AdminLayout y StudentLayout). Las páginas se renderizan en <Outlet />
 // (o como `children` cuando la ruta es compartida con otros roles).
-export default function SidebarLayout({ menu, roleLabel, subtitle, logoutMessage, children }) {
+export default function SidebarLayout({ menu, roleLabel, subtitle, logoutMessage, extras, children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = usePersistentState("venglish.sidebar.collapsed", false);
@@ -60,6 +60,8 @@ export default function SidebarLayout({ menu, roleLabel, subtitle, logoutMessage
 
         <main className="admin-content">{children ?? <Outlet />}</main>
       </div>
+
+      {extras}
     </div>
   );
 }

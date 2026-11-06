@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timedelta
 
-from psycopg2 import IntegrityError
 
 from app.constants import (
     ALLOWED_DURATIONS,
@@ -12,9 +11,9 @@ from app.constants import (
     MIN_CANCELLATION_NOTICE_HOURS,
     ROLE_STUDENT,
 )
-from app.database import db_cursor
+from app.database import IntegrityError, db_cursor
 from app.models import admin_model, booking_model, course_model, student_model
-from app.services import email_service, google_calendar, schedule_service
+from app.services import email_service, schedule_service
 from app.utils.dates import parse_class_datetime
 from app.utils.errors import ServiceError
 from app.utils.http import clean_text
@@ -108,7 +107,6 @@ def create_booking(student_id, data):
         raise ServiceError("No fue posible crear la reserva", 500)
 
     _notify_booking(contacts, date_text, _time_range(time_text, duration))
-    _add_to_teacher_calendar(booking_id, contacts, class_start, duration)
     return booking_id
 
 
@@ -135,13 +133,12 @@ def cancel_booking(booking_id, role, student_id, user_id, role_level):
         booking_model.delete(cursor, booking_id)
 
     _notify_cancellation(booking)
-    google_calendar.delete_event(booking[10], booking[11])
 
 
 def _notify_booking(contacts, date_text, time_text):
     if not contacts:
         return
-    student_name, student_email, course_name, teacher_name, teacher_email, _ = contacts
+    student_name, student_email, course_name, teacher_name, teacher_email = contacts
     try:
         email_service.send_student_booking_email(
             student_name=student_name,
@@ -163,26 +160,6 @@ def _notify_booking(contacts, date_text, time_text):
         logger.exception("Error enviando correos de reserva")
 
 
-def _add_to_teacher_calendar(booking_id, contacts, class_start, duration):
-    if not contacts:
-        return
-    student_name, student_email, course_name, _, _, calendar_id = contacts
-    event_id = google_calendar.create_event(
-        calendar_id,
-        summary=f"{course_name} - {student_name}",
-        description=f"Clase reservada en Venglish por {student_name} ({student_email or 'sin correo'}).",
-        start=class_start,
-        minutes=duration,
-    )
-    if not event_id:
-        return
-    try:
-        with db_cursor(commit=True) as cursor:
-            booking_model.set_calendar_event(cursor, booking_id, event_id)
-    except Exception:
-        logger.exception("Error guardando el evento de calendario de la reserva %s", booking_id)
-
-
 def format_duration(minutes):
     hours, rest = divmod(minutes, 60)
     parts = []
@@ -202,7 +179,7 @@ def _time_range(start_text, minutes):
 def _notify_cancellation(booking):
     (
         _, _, class_date, class_time, student_name, student_email,
-        course_name, teacher_name, teacher_email, duration, _, _,
+        course_name, teacher_name, teacher_email, duration,
     ) = booking
     time_range = _time_range(f"{class_time:%H:%M}", duration)
     try:

@@ -35,6 +35,11 @@ class Config:
     SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
     SESSION_COOKIE_NAME = "venglish_session"
 
+    # Asistente (chatbot) con la API de Claude
+    ANTHROPIC_API_KEY = _clean_env("ANTHROPIC_API_KEY")
+    CHATBOT_MODEL = _clean_env("CHATBOT_MODEL") or "claude-haiku-5-5"
+    CHATBOT_EFFORT = _clean_env("CHATBOT_EFFORT") or "low"
+
     FRONTEND_ORIGINS = [
         origin.strip().rstrip("/")
         for origin in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173").split(",")
